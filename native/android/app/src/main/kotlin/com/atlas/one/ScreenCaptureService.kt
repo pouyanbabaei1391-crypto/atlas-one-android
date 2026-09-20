@@ -3,6 +3,7 @@ package com.atlas.one
 import android.app.*
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.graphics.Bitmap
 import android.graphics.PixelFormat
 import android.hardware.display.DisplayManager
@@ -13,7 +14,6 @@ import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.IBinder
 import android.util.Base64
-import androidx.core.app.NotificationCompat
 import java.io.ByteArrayOutputStream
 import java.util.concurrent.atomic.AtomicLong
 
@@ -33,7 +33,16 @@ class ScreenCaptureService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        startForeground(notificationId, makeNotification())
+        val notification = makeNotification()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(
+                notificationId,
+                notification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION,
+            )
+        } else {
+            startForeground(notificationId, notification)
+        }
         if (projection != null) return START_NOT_STICKY
 
         val resultCode = intent?.getIntExtra("resultCode", Activity.RESULT_CANCELED) ?: Activity.RESULT_CANCELED
@@ -111,7 +120,13 @@ class ScreenCaptureService : Service() {
             val channel = NotificationChannel(channelId, "Atlas Screen Vision", NotificationManager.IMPORTANCE_LOW)
             (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).createNotificationChannel(channel)
         }
-        return NotificationCompat.Builder(this, channelId)
+        val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Notification.Builder(this, channelId)
+        } else {
+            @Suppress("DEPRECATION")
+            Notification.Builder(this)
+        }
+        return builder
             .setSmallIcon(android.R.drawable.ic_menu_view)
             .setContentTitle("Atlas Screen Vision فعال است")
             .setContentText("صفحه فقط پس از تأیید شما در حال اشتراک‌گذاری است.")

@@ -8,21 +8,23 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: atlas-android-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-apk:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
 
+    env:
+      CI: "true"
+      JAVA_TOOL_OPTIONS: "-Xmx4g"
+      GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.daemon=false"
+
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.47.5'
-          channel: stable
-          cache: true
 
       - name: Set up Java 17
         uses: actions/setup-java@v5
@@ -30,32 +32,38 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Set up Flutter 3.47.5
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.5'
+          channel: stable
+          cache: false
 
-      - name: Flutter diagnostics
+      - name: Diagnostics
+        shell: bash
         run: |
+          set -euxo pipefail
+          java -version
           flutter --version
           dart --version
-          flutter doctor -v
+          flutter config --no-analytics
+          flutter doctor -v || true
 
-      - name: Accept Android licenses
-        run: yes | sdkmanager --licenses || true
-
-      - name: Install Android SDK packages
+      - name: Build release APK
+        shell: bash
         run: |
-          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
-
-      - name: Build Atlas APK
-        run: python3 build.py android
+          set -euxo pipefail
+          python3 -u build.py android
 
       - name: Verify APK
+        shell: bash
         run: |
-          test -f dist/Atlas-One-Android.apk
+          set -euxo pipefail
+          test -s dist/Atlas-One-Android.apk
           ls -lh dist/Atlas-One-Android.apk
           sha256sum dist/Atlas-One-Android.apk | tee dist/Atlas-One-Android.apk.sha256
 
-      - name: Upload APK
+      - name: Upload installable Android APK
         uses: actions/upload-artifact@v4
         with:
           name: Atlas-One-Android-APK

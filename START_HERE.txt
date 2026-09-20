@@ -1,0 +1,56 @@
+ATLAS ONE MOBILE AI — START HERE
+================================
+
+FASTEST ANDROID PATH (NO ANDROID STUDIO NEEDED ON YOUR PC)
+
+1) Extract this ZIP into its own folder.
+2) Double-click:
+
+   UPDATE_TO_GITHUB.bat
+
+3) The first time only, paste your REAL GitHub repository URL, for example:
+
+   https://github.com/your-user/atlas-one-android.git
+
+4) GitHub Actions opens automatically.
+5) Wait for:
+
+   Build Atlas Android APK  -> GREEN
+
+6) Open the successful run -> Artifacts -> download:
+
+   Atlas-One-Android-APK
+
+7) Unzip the artifact. The installable file is:
+
+   Atlas-One-Android.apk
+
+8) Send that APK by Telegram/WhatsApp/Drive/etc. Android users can install it after approving installation from that source.
+
+EVERY FUTURE UPDATE
+-------------------
+Edit the project, then double-click UPDATE_TO_GITHUB.bat again.
+It updates the SAME GitHub repository without deleting its history and automatically starts a new Android build.
+
+CORE CAPABILITIES INCLUDED
+--------------------------
+- Persian microphone conversation: STT -> AI -> TTS
+- Screen Vision with explicit OS permission
+- Camera Vision (front camera by default)
+- User-selected application allow-list
+- AI can open selected Android apps and approved URI/Deep-Link actions
+- Encrypted long-term memory + short-term conversation context
+- All saved conversations encrypted locally when Memory is enabled
+- Voice shutdown phrases such as "خاموش شو" / "همه چیز رو خاموش کن"
+- Says "خداحافظ <user name>" before shutting down
+- Kill Switch stops voice, camera, screen sharing and app-action permissions inside Atlas
+- Android 13+ requests self-revocation of Camera/Microphone when OS-revocation shutdown is used
+- Android + iOS source included
+
+IMPORTANT PLATFORM REALITY
+--------------------------
+Android: an APK can be sent directly and installed by the recipient with Android's installation approval.
+
+iPhone: Apple requires code signing/provisioning. A normal unsigned IPA cannot simply be sent in a messenger and installed by everyone. Use a Mac + Xcode + Apple signing, then distribute through TestFlight/App Store or registered-device Ad Hoc distribution.
+
+"Autonomous Apps" does NOT bypass Android/iOS security. Android can list and launch user-approved apps and use official Intent/Deep-Link/API integrations. iOS does not allow a normal third-party app to enumerate/control every installed app UI.

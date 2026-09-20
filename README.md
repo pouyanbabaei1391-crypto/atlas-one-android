@@ -1,139 +1,131 @@
-# Atlas One Mobile AI
+# Atlas One Mobile AI — Full Fix v4
 
-A privacy-first Persian AI companion foundation for **Android + iPhone** with:
+A mobile-first Persian AI application foundation for **Android + iOS**, designed around explicit user permissions, encrypted memory, visual context and user-approved application actions.
 
-- Persian STT + TTS conversation
-- configurable OpenAI-compatible LLM endpoint (`gemma3:4b` by default)
-- encrypted long-term conversation memory + short-term context
-- Camera Vision
-- Screen Vision with explicit OS consent
-- user-selected app launch/integration layer
-- voice shutdown phrases and a global Kill Switch
-- Android 13+ self-revocation request for camera/microphone permissions on shutdown
-- iOS safe integration through documented URL/App-Intent style mechanisms rather than hidden UI control
+## Core capabilities preserved and repaired
 
-## One-command Android build
+- **Persian Microphone AI** — STT → LLM → TTS conversational loop.
+- **Screen Vision** — continuously refreshes the latest screen frame after the OS capture-consent flow; the AI receives the current frame when the user speaks/asks for screen analysis.
+- **Camera Vision** — front-camera preview and current-frame visual reasoning.
+- **Autonomous Work with Applications** — Android enumerates launchable apps; the user selects an allow-list; the AI may open only those selected apps and may open approved `http`, `https`, `mailto`, `tel`, `sms`, and `geo` URIs. Deeper app work must use that app's official API / Intent / Deep Link.
+- **Short-Term Memory** — current conversation context.
+- **Long-Term Memory** — encrypted local SQLite message store plus optional semantic retrieval from an embeddings endpoint.
+- **Conversation persistence** — messages are stored whenever Memory is enabled (enabled by default).
+- **Voice shutdown / Kill Switch** — phrases such as `خاموش شو`, `همه چیز رو خاموش کن`, `خداحافظ اطلس` cause Atlas to stop listening, say `خداحافظ <نام کاربر>`, then stop Camera, Screen Vision and all app-action allow-list access. Android 13+ also requests self-revocation of Camera/Microphone permissions.
+- **OpenAI-compatible endpoint** — defaults to `gemma3:4b`; endpoint/model/API key are configurable.
+- **Android + iOS native bridges** — Android MediaProjection + package launch; iOS ReplayKit/system URL integrations.
 
-Prerequisites: Flutter stable, Android SDK, Python 3, Java 17+.
+## The simple Android build/update flow
 
-Windows PowerShell:
+You specifically asked that **Update to GitHub must remain in the project**. It is now a first-class workflow:
+
+```text
+UPDATE_TO_GITHUB.bat
+```
+
+The script:
+
+1. remembers your GitHub repository URL after the first run;
+2. creates a clean publishing clone of the existing repository;
+3. copies the latest Atlas project into it;
+4. commits changes without destroying repository history;
+5. pushes `main`;
+6. opens GitHub Actions automatically;
+7. the push automatically starts `Build Atlas Android APK`.
+
+Download the finished artifact:
+
+```text
+Actions
+→ Build Atlas Android APK
+→ successful run
+→ Artifacts
+→ Atlas-One-Android-APK
+→ Atlas-One-Android.apk
+```
+
+No Android Studio installation is required on your local Windows machine for this cloud path.
+
+Compatibility aliases are also kept:
+
+```text
+UPLOAD_TO_GITHUB.bat
+PUSH_FINAL_FIXED_BUILD.bat
+UPDATE_AND_BUILD_ANDROID.bat
+```
+
+All route to the same safe updater.
+
+## Local Android build
+
+If your machine already has Flutter + Java + Android SDK:
 
 ```powershell
-Set-ExecutionPolicy -Scope Process Bypass
 .\BUILD_ANDROID.ps1
 ```
 
-or double-click `BUILD_ANDROID.bat`.
+or double-click:
 
-Result:
+```text
+BUILD_ANDROID.bat
+```
+
+Output:
 
 ```text
 dist/Atlas-One-Android.apk
 ```
 
-The APK can be sent by a messaging app or hosted on a website. Android still requires the recipient to approve installation from that source.
+## iPhone / iOS
 
-## iPhone build
+The iOS source is included and is generated/patched by `build.py`. Flutter 3.47's UIScene lifecycle is handled through `FlutterImplicitEngineDelegate`.
 
-An installable iOS build **must** be compiled and signed on a Mac with Xcode and an Apple Developer identity.
+Local signed build on a Mac:
 
 ```bash
 ./BUILD_IOS.command
 ```
 
-If signing is correctly configured, the result is:
+A real installable iPhone IPA requires an Apple Developer signing identity and provisioning profile. For general users, distribute via **TestFlight/App Store**. Apple does not allow an arbitrary unsigned IPA received in a messenger to install like an Android APK.
 
-```text
-dist/Atlas-One-iOS.ipa
-```
+A manual GitHub Actions workflow called **Validate Atlas iOS Build** is also included. It produces an **unsigned validation artifact**, not a directly installable iPhone package.
 
-For ordinary users, distribute the iOS build through TestFlight/App Store. Ad Hoc IPA distribution requires registered devices.
-
-## First launch
-
-The home screen exposes separate user-controlled switches:
-
-1. **Microphone** — requests microphone access and starts Persian speech recognition / synthesis.
-2. **Screen Vision** — invokes the operating system screen-capture consent flow.
-3. **Camera** — requests camera permission and enables visual questions.
-4. **Autonomous Apps** — displays the applications/integrations that Atlas may use and lets the person opt in individually.
-5. **Memory** — encrypted local persistent memory.
-
-The red/power Kill Switch stops active capture/listening, camera use, screen sharing and selected app actions.
-
-Voice shutdown examples include:
-
-- `خاموش شو`
-- `همه چیز رو خاموش کن`
-- `خداحافظ اطلس`
-- `دیگه گوش نده`
-
-Atlas first says `خداحافظ <نام کاربر>` and then shuts down active capabilities.
-
-## AI endpoint
-
-Open **Settings** and enter an OpenAI-compatible base URL. Example for an Ollama-compatible service running on another machine on the same LAN:
-
-```text
-http://192.168.1.10:11434/v1
-model: gemma3:4b
-```
-
-For production, use HTTPS and authenticated infrastructure. `android:usesCleartextTraffic="true"` is included only to make LAN development straightforward; remove it for a production internet release.
-
-## Privacy architecture
-
-Conversation bodies are encrypted with AES-GCM. The encryption key is stored through `flutter_secure_storage`, which maps to platform secure storage. Memory deletion is available in Settings.
-
-Screen capture is never started silently. Android uses MediaProjection; the operating system displays its consent UI and a foreground notification while capture is active. iOS uses the system-approved screen-capture mechanism and does not bypass OS privacy controls.
-
-## Critical platform reality: app control
-
-Atlas intentionally does **not** ship a covert Accessibility-based click bot.
+## Platform boundaries that the code does not fake
 
 ### Android
 
-The project can enumerate launchable applications, let the person approve specific packages, and launch them. Deep links, Intents and official APIs can then be added per application. Autonomous AccessibilityService-driven planning/execution is unsuitable for a general-purpose Google Play assistant under current Play policy.
+Atlas can enumerate launchable applications, display them to the user, maintain a user-selected allow-list, launch selected packages, observe the screen through MediaProjection after explicit consent, and use official intents/deep links/APIs.
 
-### iPhone
+It intentionally does not contain a hidden AccessibilityService click-bot. Unrestricted covert UI control is neither a stable nor appropriate general-purpose mobile integration strategy.
 
-iOS does not permit a normal third-party app to enumerate and arbitrarily manipulate every installed application's UI. Production integrations need App Intents, Shortcuts, URL/universal links or APIs exposed by the target application. The included iOS bridge therefore exposes safe system integrations instead of pretending unrestricted UI control is possible.
+### iOS
 
-## Production roadmap
+iOS does not allow a normal third-party application to enumerate and arbitrarily operate every installed app. Atlas exposes documented system integrations and can be extended with App Intents, Shortcuts, URL schemes, Universal Links and APIs offered by target apps.
 
-For a commercial release, add:
+ReplayKit Screen Vision is subject to Apple's capture rules; iOS does not grant silent unrestricted cross-app screen control.
 
-- a signed HTTPS inference gateway and account system
-- on-device model routing for offline operation
-- streaming ASR/TTS provider adapters
-- semantic embedding model packaged on-device
-- app-specific connectors (banking actions should always require explicit confirmation)
-- jailbreak/root detection and device integrity checks
-- certificate pinning
-- biometric lock for memory
-- remote wipe for a user's own account
-- crash reporting with sensitive-data redaction
-- independent mobile security audit / penetration test
+## AI endpoint
 
-## Source layout
+In Settings:
 
 ```text
-lib/
-  core/
-    assistant_controller.dart
-    ai_service.dart
-    voice_service.dart
-    memory_service.dart
-    camera_service.dart
-    native_bridge.dart
-    app_action_service.dart
-  screens/
-    home_screen.dart
-    settings_screen.dart
-native/
-  android/   # MediaProjection + package launcher + permission shutdown bridge
-  ios/       # ReplayKit-compatible capture + safe system integrations
-build.py     # creates the Flutter platform scaffold and builds release artifacts
+Base URL: http://192.168.1.10:11434/v1
+Model: gemma3:4b
+Embedding model: embeddinggemma
+API key: optional
 ```
 
-This is a buildable engineering foundation, not a claim that Android/iOS allow unrestricted hidden control of every app.
+The chat client first requests JSON action mode. If a local OpenAI-compatible server rejects `response_format`, Atlas automatically retries without that field.
+
+## Security model
+
+See `SECURITY.md`. Core principles:
+
+- explicit OS permission before microphone/camera/screen capture;
+- local AES-GCM encrypted memory;
+- secure-storage encryption key;
+- user-controlled app allow-list;
+- no secret screen capture;
+- Kill Switch;
+- no logging of raw audio/frame/memory/API-key contents;
+- production releases should use HTTPS rather than cleartext LAN development transport.

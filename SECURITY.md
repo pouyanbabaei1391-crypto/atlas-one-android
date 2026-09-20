@@ -1,12 +1,14 @@
 # Atlas One Security Invariants
 
-1. No microphone, camera or screen capture before explicit OS/user permission.
-2. No silent screen capture.
-3. No arbitrary third-party app UI control through hidden accessibility abuse.
-4. Sensitive external actions require explicit user confirmation in production connectors.
-5. Long-term conversation content is encrypted at rest.
-6. Kill Switch terminates active capture/listening and disables the app-action allowlist.
-7. Android 13+ may request self-revocation of runtime camera/microphone permissions when the Kill Switch uses OS-revocation mode.
-8. iOS permissions remain controlled by the user in Settings; the app stops access immediately but cannot secretly rewrite the user's privacy choices.
-9. Production traffic must use HTTPS; development cleartext LAN transport is not production-safe.
-10. Never log raw microphone audio, frames, prompts, tokens, memory plaintext or API keys.
+1. Microphone, Camera and Screen Vision never start before explicit user/OS permission.
+2. Screen capture is visible to the operating system and cannot silently bypass platform privacy controls.
+3. Autonomous application actions are restricted to apps the user explicitly selects in the Atlas allow-list.
+4. Atlas does not include a hidden AccessibilityService for unrestricted cross-app clicking.
+5. Financial transactions, destructive data actions, password/account changes and final message sending require a purpose-built connector with explicit confirmation before production execution.
+6. Long-term conversation content is encrypted at rest with AES-GCM; the key is stored through platform secure storage.
+7. The Kill Switch disables microphone listening, TTS playback, Camera Vision, Screen Vision and the application allow-list.
+8. On Android 13+, OS-revocation shutdown requests self-revocation of Camera and Microphone runtime permissions.
+9. iOS does not permit third-party apps to silently rewrite privacy permissions; Atlas immediately terminates its active sessions instead.
+10. Production inference traffic should use HTTPS and authenticated infrastructure. `usesCleartextTraffic=true` exists only for local-LAN development.
+11. Raw microphone audio, screen frames, camera frames, memory plaintext and API keys must not be written to application logs.
+12. A production release should add certificate pinning, device-integrity checks, biometric protection for memory and independent mobile penetration testing.

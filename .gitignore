@@ -1,0 +1,13 @@
+.dart_tool/
+.build/
+build/
+dist/
+.idea/
+.vscode/
+.packages
+.pub-cache/
+.flutter-plugins
+.flutter-plugins-dependencies
+*.iml
+.DS_Store
+.atlas_repo_url

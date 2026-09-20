@@ -1,0 +1,39 @@
+name: Validate Atlas iOS Build
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-ios:
+    runs-on: macos-15
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter 3.47.5
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.5'
+          channel: stable
+          cache: false
+
+      - name: Build unsigned iOS validation artifact
+        shell: bash
+        run: |
+          set -euxo pipefail
+          flutter --version
+          xcodebuild -version
+          python3 -u build.py ios-unsigned
+
+      - name: Upload unsigned iOS validation artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Atlas-One-iOS-UNSIGNED-NOT-INSTALLABLE
+          path: dist/Atlas-One-iOS-UNSIGNED.zip
+          if-no-files-found: error
+          retention-days: 14
