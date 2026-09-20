@@ -1,0 +1,41 @@
+ATLAS ONE — SIMPLE ANDROID APK BUILD
+====================================
+
+You do NOT need Android Studio or Android SDK on this PC.
+GitHub's cloud computer builds the APK for you.
+
+ONE-TIME STEPS
+--------------
+1) Create a FREE GitHub account if you do not already have one.
+2) Create a new EMPTY repository, for example:
+   atlas-one-android
+3) Double-click:
+   UPLOAD_TO_GITHUB.bat
+4) Paste your repository URL when asked, e.g.:
+   https://github.com/YOURNAME/atlas-one-android.git
+
+BUILD THE APK
+-------------
+1) Open your repository on GitHub.
+2) Click Actions.
+3) Open "Build Atlas Android APK".
+4) Click "Run workflow" -> "Run workflow".
+5) Wait for the green check mark.
+6) Open that workflow run.
+7) Under Artifacts, download:
+   Atlas-One-Android-APK
+8) Unzip it. Your installable file is:
+   Atlas-One-Android.apk
+
+PHONE INSTALL
+-------------
+Send Atlas-One-Android.apk to your Android phone by Telegram,
+WhatsApp, Drive, USB, etc. Tap the APK and approve "Install unknown apps"
+for that source if Android asks.
+
+IMPORTANT
+---------
+- The cloud build still downloads Android build tools, but it does so
+  on GitHub's servers, not from your restricted PC connection.
+- This package does not bypass Android permissions. Camera, microphone
+  and screen capture still require the user's OS consent.

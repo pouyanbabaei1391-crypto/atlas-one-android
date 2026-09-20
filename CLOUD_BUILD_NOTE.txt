@@ -1,0 +1,2 @@
+Cloud-build support was added without removing the existing Atlas One source or local build files.
+Original app functionality remains in the existing lib/, native/, pubspec.yaml and build.py files.
