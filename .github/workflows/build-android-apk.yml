@@ -3,10 +3,14 @@ name: Build Atlas Android APK
 on:
   workflow_dispatch:
   push:
-    branches: [ main, master ]
+    branches:
+      - main
+      - master
+    paths-ignore:
+      - "download/**"
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: atlas-android-${{ github.ref }}
@@ -25,17 +29,19 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Java 17
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: "17"
 
       - name: Set up Flutter 3.47.5
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.47.5'
+          flutter-version: "3.47.5"
           channel: stable
           cache: false
 
@@ -62,6 +68,22 @@ jobs:
           test -s dist/Atlas-One-Android.apk
           ls -lh dist/Atlas-One-Android.apk
           sha256sum dist/Atlas-One-Android.apk | tee dist/Atlas-One-Android.apk.sha256
+
+      - name: Publish APK to repository
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p download
+          cp dist/Atlas-One-Android.apk download/Atlas-One-Android.apk
+          cp dist/Atlas-One-Android.apk.sha256 download/Atlas-One-Android.apk.sha256
+          git config user.name "Atlas Build Bot"
+          git config user.email "atlas-build-bot@users.noreply.github.com"
+          git add -f download/Atlas-One-Android.apk
+          git add -f download/Atlas-One-Android.apk.sha256
+          if ! git diff --cached --quiet; then
+            git commit -m "Update Atlas Android APK [skip ci]"
+            git push origin HEAD:${{ github.ref_name }}
+          fi
 
       - name: Upload installable Android APK
         uses: actions/upload-artifact@v4
