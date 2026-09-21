@@ -4,6 +4,7 @@ import 'package:camera/camera.dart';
 
 class CameraService {
   CameraController? controller;
+  Future<String>? _captureInFlight;
   CameraLensDirection _direction = CameraLensDirection.front;
 
   Future<void> start() async {
@@ -34,7 +35,13 @@ class CameraService {
     await start();
   }
 
-  Future<String> captureBase64() async {
+  Future<String> captureBase64() {
+    return _captureInFlight ??= _captureFrame().whenComplete(() {
+      _captureInFlight = null;
+    });
+  }
+
+  Future<String> _captureFrame() async {
     final current = controller;
     if (current == null || !current.value.isInitialized) {
       throw StateError('دوربین آماده نیست');
@@ -51,6 +58,7 @@ class CameraService {
   Future<void> stop() async {
     final current = controller;
     controller = null;
+    try { await _captureInFlight; } catch (_) {}
     await current?.dispose();
   }
 }

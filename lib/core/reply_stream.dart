@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 /// Only complete, decoded reply characters are exposed; action JSON is never spoken.
@@ -41,29 +42,57 @@ class SpeechChunks {
   String _seen = '';
   String _pending = '';
   final void Function(String) emit;
+  Timer? _flushTimer;
+  bool _closed = false;
+  bool _hasEmitted = false;
   SpeechChunks(this.emit);
 
+  void _scheduleFlush() {
+    if (_closed || _pending.isEmpty || _flushTimer != null) return;
+    _flushTimer = Timer(const Duration(milliseconds: 220), () {
+      _flushTimer = null;
+      if (_closed) return;
+      final boundary = _pending.lastIndexOf(' ');
+      if (boundary >= 12) _emitThrough(boundary + 1);
+      _scheduleFlush();
+    });
+  }
+
+  void dispose() {
+    _closed = true;
+    _flushTimer?.cancel();
+    _flushTimer = null;
+  }
+
   void add(String reply) {
-    if (!reply.startsWith(_seen)) return;
+    if (_closed || !reply.startsWith(_seen)) return;
     _pending += reply.substring(_seen.length);
     _seen = reply;
     while (true) {
       final end = RegExp(r'[.!?؟\n؛]').firstMatch(_pending);
       if (end != null) {
         _emitThrough(end.end);
-      } else if (_pending.length >= 100 && _pending.lastIndexOf(' ') > 30) {
+      } else if (_pending.length >= (_hasEmitted ? 100 : 36) && _pending.lastIndexOf(' ') > 12) {
         _emitThrough(_pending.lastIndexOf(' ') + 1);
       } else {
         break;
       }
     }
+    _scheduleFlush();
   }
 
   void _emitThrough(int end) {
     final text = _pending.substring(0, end).trim();
     _pending = _pending.substring(end);
-    if (text.isNotEmpty) emit(text);
+    if (text.isNotEmpty) {
+      _hasEmitted = true;
+      emit(text);
+    }
   }
 
-  void finish() => _emitThrough(_pending.length);
+  void finish() {
+    if (_closed) return;
+    _emitThrough(_pending.length);
+    dispose();
+  }
 }

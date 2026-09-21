@@ -1,74 +1,33 @@
 name: Build Atlas Android APK
-
 on:
   workflow_dispatch:
   push:
-    branches: [ main, master ]
-
+    branches: [main, master]
 permissions:
   contents: read
-
 concurrency:
   group: atlas-android-${{ github.ref }}
   cancel-in-progress: true
-
 jobs:
   build-apk:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 45
-
-    env:
-      CI: "true"
-      JAVA_TOOL_OPTIONS: "-Xmx4g"
-      GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.daemon=false"
-
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
-
-      - name: Set up Java 17
-        uses: actions/setup-java@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-
-      - name: Set up Flutter 3.47.5
-        uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.47.5'
           channel: stable
-          cache: false
-
-      - name: Diagnostics
-        shell: bash
-        run: |
-          set -euxo pipefail
-          java -version
-          flutter --version
-          dart --version
-          flutter config --no-analytics
-          flutter doctor -v || true
-
-      - name: Build release APK
-        shell: bash
-        run: |
-          set -euxo pipefail
-          python3 -u build.py android
-
-      - name: Verify APK
-        shell: bash
-        run: |
-          set -euxo pipefail
-          test -s dist/Atlas-One-Android.apk
-          ls -lh dist/Atlas-One-Android.apk
-          sha256sum dist/Atlas-One-Android.apk | tee dist/Atlas-One-Android.apk.sha256
-
-      - name: Upload installable Android APK
-        uses: actions/upload-artifact@v4
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze --no-fatal-infos --no-fatal-warnings
+      - run: flutter test
+      - run: python build.py android
+      - uses: actions/upload-artifact@v4
         with:
           name: Atlas-One-Android-APK
-          path: |
-            dist/Atlas-One-Android.apk
-            dist/Atlas-One-Android.apk.sha256
+          path: dist/Atlas-One-Android.apk
           if-no-files-found: error
-          retention-days: 30

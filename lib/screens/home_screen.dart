@@ -219,6 +219,14 @@ class _HomeScreenState extends State<HomeScreen> {
                       onPressed: c.busy ? null : c.switchCamera,
                       child: const Text('جابه‌جایی دوربین جلو و پشت'),
                     ),
+                  if (c.busy)
+                    TextButton.icon(
+                      onPressed: c.interruptAndListen,
+                      icon: const Icon(Icons.stop_circle_outlined),
+                      label: Text(c.microphoneEnabled
+                          ? 'قطع پاسخ؛ می‌خواهم صحبت کنم'
+                          : 'توقف پاسخ'),
+                    ),
                   const SizedBox(height: 7),
                   Row(
                     children: [

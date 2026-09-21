@@ -43,6 +43,7 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
   bool _sensorChanging = false;
   int _turnEpoch = 0;
   int _listenEpoch = 0;
+  int _microphoneRequest = 0;
   int _memoryEpoch = 0;
   int _speechEpoch = 0;
   int _accessEpoch = 0;
@@ -76,6 +77,7 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> toggleMicrophone(bool value) async {
+    final request = ++_microphoneRequest;
     _listenTimer?.cancel();
     if (!value) {
       microphoneEnabled = false;
@@ -89,14 +91,21 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
     }
     final access = _accessEpoch;
     final result = await Permission.microphone.request();
-    if (access != _accessEpoch) return;
+    if (access != _accessEpoch || request != _microphoneRequest) return;
     if (!result.isGranted) {
       status = 'مجوز میکروفون داده نشد';
       notifyListeners();
       return;
     }
-    await voice.init();
-    if (access != _accessEpoch) return;
+    try {
+      await voice.init();
+    } catch (_) {
+      if (access != _accessEpoch || request != _microphoneRequest) return;
+      status = 'آماده‌سازی گفتار ممکن نشد؛ موتور گفتار گوشی را بررسی کنید.';
+      notifyListeners();
+      return;
+    }
+    if (access != _accessEpoch || request != _microphoneRequest) return;
     microphoneEnabled = true;
     voiceWarning = voice.persianVoiceAvailable ? null
         : 'برای پاسخ صوتی، صدای فارسی را در موتور گفتار گوشی فعال کنید.';
@@ -142,7 +151,9 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
           notifyListeners();
           if (finalResult) _acceptSpeech(text, epoch);
         },
-        onDone: () => _scheduleListen(450),
+        onDone: () {
+          if (epoch == _listenEpoch) _scheduleListen(150);
+        },
         onError: (error) {
           if (epoch != _listenEpoch || !microphoneEnabled) return;
           if (error == 'error_no_match' || error == 'error_speech_timeout') {
@@ -272,11 +283,13 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
       await speechQueue;
       if (epoch == _turnEpoch) status = voiceWarning ?? 'آماده';
     } catch (_) {
+      chunks.dispose();
       await speechQueue;
       if (epoch == _turnEpoch) {
         status = 'پاسخ کامل دریافت نشد؛ اتصال سرور، مدل بینایی و مجوزهای فعال را بررسی کنید.';
       }
     } finally {
+      chunks.dispose();
       if (epoch == _turnEpoch) {
         streamingReply = '';
         _visionTurn = false;
@@ -302,6 +315,17 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
       }
     })().whenComplete(() => _indexJobs.remove(job));
     _indexJobs.add(job);
+  }
+
+  Future<void> interruptAndListen() async {
+    _listenTimer?.cancel();
+    _listenEpoch++;
+    liveTranscript = '';
+    await voice.cancelListening();
+    await _cancelTurn();
+    status = microphoneEnabled ? 'گوش می‌دهم…' : 'پاسخ متوقف شد';
+    notifyListeners();
+    _scheduleListen(80);
   }
 
   Future<void> _cancelTurn() async {
@@ -388,7 +412,14 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
     if (value && screenVisionEnabled && !busy) {
       // Consent can complete before the native service has produced its first frame.
       for (var i = 0; i < 12 && screenVisionEnabled; i++) {
-        if (await bridge.captureScreenFrame() != null) break;
+        try {
+          final frame = await bridge.captureScreenFrame();
+          if (frame != null && frame.isNotEmpty) break;
+        } catch (_) {
+          status = 'دریافت صفحه ممکن نشد؛ اشتراک صفحه را دوباره فعال کنید.';
+          notifyListeners();
+          return;
+        }
         await Future<void>.delayed(const Duration(milliseconds: 100));
       }
       if (screenVisionEnabled) await _inspectActiveVision();
@@ -397,13 +428,19 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<void> inspectScreen(String question) async {
     if (!screenVisionEnabled || busy) return;
-    final frame = await bridge.captureScreenFrame();
-    if (frame == null || frame.isEmpty) {
-      status = 'فریم تازهٔ صفحه در دسترس نیست؛ اشتراک صفحه را بررسی کنید.';
+    try {
+      final frame = await bridge.captureScreenFrame();
+      if (!screenVisionEnabled || busy) return;
+      if (frame == null || frame.isEmpty) {
+        status = 'فریم تازهٔ صفحه در دسترس نیست؛ اشتراک صفحه را بررسی کنید.';
+        notifyListeners();
+        return;
+      }
+      await send(question, imageBase64: frame, speakReply: true);
+    } catch (_) {
+      status = 'دریافت صفحه ممکن نشد؛ اشتراک صفحه را دوباره فعال کنید.';
       notifyListeners();
-      return;
     }
-    await send(question, imageBase64: frame, speakReply: true);
   }
 
   Future<void> toggleCamera(bool value) async {
@@ -499,6 +536,7 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<void> killSwitch({bool revokeOsPermissions = false}) async {
     _accessEpoch++;
+    _microphoneRequest++;
     _listenTimer?.cancel();
     _visionTimer?.cancel();
     _listenEpoch++;

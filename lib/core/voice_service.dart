@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
@@ -10,10 +12,20 @@ class VoiceService {
   String? _persianLocale;
   bool persianVoiceAvailable = false;
   bool isSpeaking = false;
+  int _speechGeneration = 0;
+  Completer<void>? _speechStopped;
   void Function(String error)? _onError;
   void Function()? _onDone;
 
-  Future<void> init() => _initializing ??= _init();
+  Future<void> init() async {
+    try {
+      await (_initializing ??= _init());
+    } catch (_) {
+      _initializing = null;
+      rethrow;
+    }
+    if (!_ready) _initializing = null;
+  }
 
   Future<void> _init() async {
     _ready = await _stt.initialize(
@@ -35,7 +47,15 @@ class VoiceService {
     await _ensureTts();
   }
 
-  Future<void> _ensureTts() => _ttsInitializing ??= _initTts();
+  Future<void> _ensureTts() async {
+    try {
+      await (_ttsInitializing ??= _initTts());
+    } catch (_) {
+      _ttsInitializing = null;
+      rethrow;
+    }
+    if (!persianVoiceAvailable) _ttsInitializing = null;
+  }
 
   Future<void> _initTts() async {
     final languages = await _tts.getLanguages;
@@ -47,7 +67,7 @@ class VoiceService {
         persianVoiceAvailable = true;
       }
     }
-    await _tts.setSpeechRate(0.52);
+    await _tts.setSpeechRate(0.56);
     await _tts.setPitch(1.0);
     await _tts.setVolume(1.0);
     await _tts.awaitSpeakCompletion(true);
@@ -89,20 +109,34 @@ class VoiceService {
   }
 
   Future<void> speak(String text) async {
+    final generation = _speechGeneration;
     await _ensureTts();
+    if (generation != _speechGeneration) return;
     if (!persianVoiceAvailable) {
       throw StateError('صدای فارسی در موتور گفتار گوشی نصب یا فعال نیست.');
     }
     if (text.trim().isEmpty) return;
     isSpeaking = true;
+    final stopped = Completer<void>();
+    _speechStopped = stopped;
     try {
-      await _tts.speak(text.trim()).timeout(const Duration(seconds: 45));
+      await Future.any<void>([
+        _tts.speak(text.trim()).then<void>((_) {}),
+        stopped.future,
+      ]).timeout(const Duration(seconds: 45));
     } finally {
-      isSpeaking = false;
+      if (generation == _speechGeneration) {
+        isSpeaking = false;
+        _speechStopped = null;
+      }
     }
   }
 
   Future<void> stopSpeaking() async {
+    _speechGeneration++;
+    final stopped = _speechStopped;
+    _speechStopped = null;
+    if (stopped != null && !stopped.isCompleted) stopped.complete();
     await _tts.stop();
     isSpeaking = false;
   }
