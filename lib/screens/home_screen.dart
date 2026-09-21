@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -29,13 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final c = context.watch<AssistantController>();
     return Scaffold(
       appBar: AppBar(
-        title: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('ATLAS ONE', style: TextStyle(fontWeight: FontWeight.w800)),
-            Text('PRIVATE MOBILE AI', style: TextStyle(fontSize: 10, letterSpacing: 1.5)),
-          ],
-        ),
+        title: const Text('اطلس'),
         actions: [
           IconButton(
             onPressed: () => Navigator.push(
@@ -43,7 +36,7 @@ class _HomeScreenState extends State<HomeScreen> {
               MaterialPageRoute(builder: (_) => const SettingsScreen()),
             ),
             icon: const Icon(Icons.tune_rounded),
-            tooltip: 'Settings',
+            tooltip: 'تنظیمات',
           ),
         ],
       ),
@@ -80,36 +73,36 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             SizedBox(
-              height: 160,
+              height: 78,
               child: ListView(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 10),
                 children: [
                   _FeatureCard(
                     icon: Icons.mic_rounded,
-                    title: 'Microphone',
-                    subtitle: 'Persian STT + TTS',
+                    title: 'میکروفون',
+                    subtitle: 'مکالمهٔ صوتی فارسی',
                     active: c.microphoneEnabled,
                     onChanged: c.toggleMicrophone,
                   ),
                   _FeatureCard(
                     icon: Icons.visibility_rounded,
-                    title: 'Screen Vision',
-                    subtitle: 'Live frame with OS consent',
+                    title: 'دیدن صفحه',
+                    subtitle: 'با اجازهٔ شما',
                     active: c.screenVisionEnabled,
                     onChanged: c.toggleScreenVision,
                   ),
                   _FeatureCard(
                     icon: Icons.camera_alt_rounded,
-                    title: 'Camera',
-                    subtitle: 'Front-camera Vision',
+                    title: 'دوربین',
+                    subtitle: 'بدون پیش‌نمایش',
                     active: c.cameraEnabled,
                     onChanged: c.toggleCamera,
                   ),
                   _FeatureCard(
                     icon: Icons.apps_rounded,
-                    title: 'Autonomous Apps',
-                    subtitle: 'User-selected integrations',
+                    title: 'برنامه‌ها',
+                    subtitle: 'برنامه‌های منتخب',
                     active: c.appActions.enabled,
                     onChanged: (enabled) async {
                       if (enabled) {
@@ -124,26 +117,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   _FeatureCard(
                     icon: Icons.memory_rounded,
-                    title: 'Memory',
-                    subtitle: 'Encrypted long-term memory',
+                    title: 'حافظه',
+                    subtitle: 'حافظهٔ رمزگذاری‌شده',
                     active: c.memoryEnabled,
                     onChanged: (enabled) async => c.setMemoryEnabled(enabled),
                   ),
                 ],
               ),
             ),
-            if (c.cameraEnabled && c.camera.controller?.value.isInitialized == true)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-                child: SizedBox(
-                  height: 180,
-                  width: double.infinity,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(22),
-                    child: CameraPreview(c.camera.controller!),
-                  ),
-                ),
-              ),
             if (c.liveTranscript.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
@@ -154,17 +135,30 @@ class _HomeScreenState extends State<HomeScreen> {
                     borderRadius: BorderRadius.circular(14),
                     color: Theme.of(context).colorScheme.surfaceContainerHighest,
                   ),
-                  child: Text(
-                    '🎙 ${c.liveTranscript}',
-                    textDirection: TextDirection.rtl,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 65),
+                    child: SingleChildScrollView(
+                      child: Text(c.liveTranscript, textDirection: TextDirection.rtl),
+                    ),
                   ),
                 ),
+              ),
+            if (c.voiceWarning != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                child: Text(c.voiceWarning!, textDirection: TextDirection.rtl),
               ),
             Expanded(
               child: ListView.builder(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                itemCount: c.messages.length,
+                itemCount: c.messages.length + (c.streamingReply.isEmpty ? 0 : 1),
                 itemBuilder: (context, index) {
+                  if (index == c.messages.length) {
+                    return Padding(
+                      padding: const EdgeInsets.all(13),
+                      child: Text(c.streamingReply, textDirection: TextDirection.rtl),
+                    );
+                  }
                   final message = c.messages[index];
                   final mine = message.role == 'user';
                   return Align(
@@ -220,13 +214,18 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                       ],
                     ),
+                  if (c.cameraEnabled)
+                    TextButton(
+                      onPressed: c.busy ? null : c.switchCamera,
+                      child: const Text('جابه‌جایی دوربین جلو و پشت'),
+                    ),
                   const SizedBox(height: 7),
                   Row(
                     children: [
                       IconButton.filledTonal(
                         onPressed: () => c.killSwitch(revokeOsPermissions: true),
                         icon: const Icon(Icons.power_settings_new_rounded),
-                        tooltip: 'Kill Switch',
+                        tooltip: 'خاموش کردن',
                       ),
                       const SizedBox(width: 8),
                       Expanded(
@@ -236,7 +235,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           minLines: 1,
                           maxLines: 4,
                           decoration: const InputDecoration(
-                            hintText: 'با Atlas صحبت کن…',
+                            hintText: 'با اطلس صحبت کن…',
                             border: OutlineInputBorder(),
                           ),
                           onSubmitted: (_) => _send(c),
@@ -279,14 +278,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 const Padding(
                   padding: EdgeInsets.fromLTRB(16, 4, 16, 6),
                   child: Text(
-                    'Autonomous Work with Applications',
+                    'کار با برنامه‌های منتخب',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                 ),
                 const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 16),
                   child: Text(
-                    'فقط اپ‌هایی که خودت انتخاب می‌کنی در allow-list قرار می‌گیرند. Atlas می‌تواند آن‌ها را باز کند و از Intent / Deep Link / API رسمی استفاده کند؛ سیستم‌عامل اجازه کنترل مخفی و نامحدود UI همه اپ‌ها را نمی‌دهد.',
+                    'اطلس فقط برنامه‌هایی را که انتخاب می‌کنی، از طریق امکانات رسمی آن‌ها باز می‌کند.',
                     textDirection: TextDirection.rtl,
                     textAlign: TextAlign.center,
                   ),
@@ -359,42 +358,13 @@ class _FeatureCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => Container(
-        width: 184,
-        margin: const EdgeInsets.symmetric(horizontal: 5, vertical: 8),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(
-            color: active
-                ? Theme.of(context).colorScheme.primary
-                : Theme.of(context).dividerColor,
-          ),
-          gradient: active
-              ? LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Theme.of(context).colorScheme.primaryContainer.withValues(alpha: .45),
-                    Theme.of(context).colorScheme.surface.withValues(alpha: .9),
-                  ],
-                )
-              : null,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(icon),
-                const Spacer(),
-                Switch(value: active, onChanged: onChanged),
-              ],
-            ),
-            Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
-            const SizedBox(height: 4),
-            Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
-          ],
-        ),
-      );
+  Widget build(BuildContext context) => SizedBox(
+    width: 176,
+    child: SwitchListTile(
+      dense: true,
+      title: Text(title, textDirection: TextDirection.rtl),
+      value: active,
+      onChanged: onChanged,
+    ),
+  );
 }

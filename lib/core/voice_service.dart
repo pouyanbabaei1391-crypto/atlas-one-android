@@ -5,40 +5,49 @@ class VoiceService {
   final SpeechToText _stt = SpeechToText();
   final FlutterTts _tts = FlutterTts();
   bool _ready = false;
+  Future<void>? _initializing;
+  Future<void>? _ttsInitializing;
   String? _persianLocale;
+  bool persianVoiceAvailable = false;
+  bool isSpeaking = false;
   void Function(String error)? _onError;
+  void Function()? _onDone;
 
-  Future<void> init() async {
-    if (_ready) return;
+  Future<void> init() => _initializing ??= _init();
+
+  Future<void> _init() async {
     _ready = await _stt.initialize(
       onError: (error) => _onError?.call(error.errorMsg),
+      onStatus: (status) {
+        if (status == 'done' || status == 'notListening') _onDone?.call();
+      },
       debugLogging: false,
-      finalTimeout: const Duration(seconds: 2),
+      finalTimeout: const Duration(milliseconds: 350),
     );
-
     if (_ready) {
-      final locales = await _stt.locales();
-      for (final locale in locales) {
-        final id = locale.localeId.toLowerCase();
-        if (id == 'fa_ir' || id == 'fa-ir' || id.startsWith('fa')) {
+      for (final locale in await _stt.locales()) {
+        if (locale.localeId.toLowerCase().startsWith('fa')) {
           _persianLocale = locale.localeId;
           break;
         }
       }
     }
+    await _ensureTts();
+  }
 
+  Future<void> _ensureTts() => _ttsInitializing ??= _initTts();
+
+  Future<void> _initTts() async {
     final languages = await _tts.getLanguages;
     if (languages is List) {
-      final fa = languages.map((e) => e.toString()).where((e) => e.toLowerCase().startsWith('fa')).toList();
+      final fa = languages.map((e) => e.toString())
+          .where((e) => e.toLowerCase().startsWith('fa')).toList();
       if (fa.isNotEmpty) {
         await _tts.setLanguage(fa.first);
-      } else {
-        await _tts.setLanguage('fa-IR');
+        persianVoiceAvailable = true;
       }
-    } else {
-      await _tts.setLanguage('fa-IR');
     }
-    await _tts.setSpeechRate(0.46);
+    await _tts.setSpeechRate(0.52);
     await _tts.setPitch(1.0);
     await _tts.setVolume(1.0);
     await _tts.awaitSpeakCompletion(true);
@@ -49,20 +58,24 @@ class VoiceService {
   Future<void> listen({
     required void Function(String text, bool finalResult) onText,
     void Function(String error)? onError,
+    void Function()? onDone,
   }) async {
     _onError = onError;
-    if (!_ready) await init();
-    if (!_ready) {
-      onError?.call('Speech recognition is not available on this device.');
+    _onDone = onDone;
+    await init();
+    if (!_ready || _persianLocale == null) {
+      onError?.call('تشخیص گفتار فارسی روی این دستگاه در دسترس نیست.');
       return;
     }
     await _stt.listen(
       localeId: _persianLocale,
-      listenMode: ListenMode.dictation,
-      partialResults: true,
-      cancelOnError: false,
-      pauseFor: const Duration(seconds: 3),
+      pauseFor: const Duration(milliseconds: 800),
       listenFor: const Duration(minutes: 2),
+      listenOptions: SpeechListenOptions(
+        listenMode: ListenMode.dictation,
+        partialResults: true,
+        cancelOnError: true,
+      ),
       onResult: (result) => onText(result.recognizedWords, result.finalResult),
     );
   }
@@ -76,10 +89,21 @@ class VoiceService {
   }
 
   Future<void> speak(String text) async {
-    if (!_ready) await init();
-    await _tts.stop();
-    if (text.trim().isNotEmpty) await _tts.speak(text.trim());
+    await _ensureTts();
+    if (!persianVoiceAvailable) {
+      throw StateError('صدای فارسی در موتور گفتار گوشی نصب یا فعال نیست.');
+    }
+    if (text.trim().isEmpty) return;
+    isSpeaking = true;
+    try {
+      await _tts.speak(text.trim()).timeout(const Duration(seconds: 45));
+    } finally {
+      isSpeaking = false;
+    }
   }
 
-  Future<void> stopSpeaking() => _tts.stop();
+  Future<void> stopSpeaking() async {
+    await _tts.stop();
+    isSpeaking = false;
+  }
 }

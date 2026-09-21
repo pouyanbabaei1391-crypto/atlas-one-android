@@ -45,7 +45,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _load();
     final c = context.watch<AssistantController>();
     return Scaffold(
-      appBar: AppBar(title: const Text('Atlas Settings')),
+      appBar: AppBar(title: const Text('تنظیمات اطلس')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -58,25 +58,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
           TextField(
             controller: base,
             decoration: const InputDecoration(
-              labelText: 'OpenAI-compatible Base URL',
+              labelText: 'نشانی سرور هوش مصنوعی',
               hintText: 'http://192.168.1.10:11434/v1',
             ),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: model,
-            decoration: const InputDecoration(labelText: 'Conversation / Vision model'),
+            decoration: const InputDecoration(labelText: 'مدل مکالمه و بینایی'),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: embeddingModel,
-            decoration: const InputDecoration(labelText: 'Embedding model'),
+            decoration: const InputDecoration(labelText: 'مدل حافظهٔ معنایی'),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: key,
             obscureText: true,
-            decoration: const InputDecoration(labelText: 'API key (optional)'),
+            decoration: const InputDecoration(labelText: 'کلید دسترسی (اختیاری)'),
           ),
           const SizedBox(height: 18),
           FilledButton.icon(
@@ -99,11 +99,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           SwitchListTile(
             value: c.memoryEnabled,
             onChanged: c.setMemoryEnabled,
-            title: const Text('Long-term Memory'),
+            title: const Text('حافظهٔ بلندمدت'),
             subtitle: const Text('ذخیره رمز‌شده مکالمات و بازیابی معنایی'),
           ),
           ListTile(
-            title: const Text('حذف کامل حافظه Atlas'),
+            title: const Text('حذف کامل حافظهٔ اطلس'),
             subtitle: const Text(
               'تمام مکالمات ذخیره‌شده در حافظه محلی رمز‌شده حذف می‌شوند.',
             ),
@@ -116,7 +116,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   );
                 }
               },
-              child: const Text('DELETE'),
+              child: const Text('حذف'),
             ),
           ),
         ],

@@ -13,6 +13,9 @@ import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.IBinder
+import android.os.Handler
+import android.os.HandlerThread
+import android.os.SystemClock
 import android.util.Base64
 import java.io.ByteArrayOutputStream
 import java.util.concurrent.atomic.AtomicLong
@@ -29,10 +32,22 @@ class ScreenCaptureService : Service() {
     private var virtualDisplay: VirtualDisplay? = null
     private var reader: ImageReader? = null
     private val lastEncoded = AtomicLong(0L)
+    private val frameLock = Any()
+    private val worker = HandlerThread("atlas-frame-encoder")
+    @Volatile private var captureActive = false
+
+    override fun onCreate() {
+        super.onCreate()
+        worker.start()
+    }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == "atlas.stop.screen") {
+            stopSelf()
+            return START_NOT_STICKY
+        }
         val notification = makeNotification()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(
@@ -70,11 +85,14 @@ class ScreenCaptureService : Service() {
         val height = metrics.heightPixels
         val density = metrics.densityDpi
         reader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2)
+        captureActive = true
         reader?.setOnImageAvailableListener({ r ->
+          synchronized(frameLock) {
+            if (!captureActive) return@setOnImageAvailableListener
             val image = r.acquireLatestImage() ?: return@setOnImageAvailableListener
             try {
-                val now = System.currentTimeMillis()
-                if (now - lastEncoded.get() < 650) return@setOnImageAvailableListener
+                val now = SystemClock.elapsedRealtime()
+                if (now - lastEncoded.get() < 250) return@setOnImageAvailableListener
                 lastEncoded.set(now)
                 val plane = image.planes[0]
                 val buffer = plane.buffer
@@ -86,14 +104,15 @@ class ScreenCaptureService : Service() {
                 bitmap.copyPixelsFromBuffer(buffer)
                 val cropped = Bitmap.createBitmap(bitmap, 0, 0, width, height)
                 val out = ByteArrayOutputStream()
-                cropped.compress(Bitmap.CompressFormat.JPEG, 62, out)
+                cropped.compress(Bitmap.CompressFormat.JPEG, 85, out)
                 latestFrame = Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
                 bitmap.recycle()
                 if (cropped !== bitmap) cropped.recycle()
             } finally {
                 image.close()
             }
-        }, null)
+          }
+        }, Handler(worker.looper))
         virtualDisplay = projection?.createVirtualDisplay(
             "AtlasScreenVision", width, height, density,
             DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
@@ -104,20 +123,27 @@ class ScreenCaptureService : Service() {
 
     override fun onDestroy() {
         cleanup()
+        worker.quitSafely()
         super.onDestroy()
     }
 
     private fun cleanup() {
-        latestFrame = null
-        reader?.close(); reader = null
-        virtualDisplay?.release(); virtualDisplay = null
-        val p = projection; projection = null
-        p?.stop()
+        val oldProjection = synchronized(frameLock) {
+            captureActive = false
+            latestFrame = null
+            reader?.setOnImageAvailableListener(null, null)
+            reader?.close(); reader = null
+            virtualDisplay?.release(); virtualDisplay = null
+            val old = projection
+            projection = null
+            old
+        }
+        oldProjection?.stop()
     }
 
     private fun makeNotification(): Notification {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(channelId, "Atlas Screen Vision", NotificationManager.IMPORTANCE_LOW)
+            val channel = NotificationChannel(channelId, "دیدن صفحهٔ اطلس", NotificationManager.IMPORTANCE_LOW)
             (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).createNotificationChannel(channel)
         }
         val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -126,10 +152,16 @@ class ScreenCaptureService : Service() {
             @Suppress("DEPRECATION")
             Notification.Builder(this)
         }
+        val stopIntent = PendingIntent.getService(
+            this, 8802,
+            Intent(this, ScreenCaptureService::class.java).setAction("atlas.stop.screen"),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
         return builder
             .setSmallIcon(android.R.drawable.ic_menu_view)
-            .setContentTitle("Atlas Screen Vision فعال است")
+            .setContentTitle("دیدن صفحهٔ اطلس فعال است")
             .setContentText("صفحه فقط پس از تأیید شما در حال اشتراک‌گذاری است.")
+            .addAction(android.R.drawable.ic_media_pause, "توقف دیدن صفحه", stopIntent)
             .setOngoing(true)
             .build()
     }
