@@ -33,6 +33,7 @@ object AtlasVoiceHost {
         val app = context.applicationContext
         val created = FlutterEngine(app)
         engine = created
+        LocalGemma.attach(app, created.dartExecutor.binaryMessenger)
         channel = MethodChannel(created.dartExecutor.binaryMessenger, "atlas.one/voice")
         channel!!.setMethodCallHandler { call, result ->
             try {

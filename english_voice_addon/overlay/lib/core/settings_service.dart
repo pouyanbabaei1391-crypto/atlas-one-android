@@ -1,6 +1,12 @@
+import 'dart:io';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class SettingsService {
+  Future<bool> get useLocalAi async =>
+      Platform.isAndroid && (await _storage.read(key: 'use_local_gemma')) != 'false';
+  Future<void> setUseLocalAi(bool value) => _storage.write(key: 'use_local_gemma', value: value.toString());
+  Future<bool> get modelTermsAccepted async => (await _storage.read(key: 'gemma_terms')) == 'accepted';
+  Future<void> acceptModelTerms() => _storage.write(key: 'gemma_terms', value: 'accepted');
   static const _storage = FlutterSecureStorage();
 
   Future<String> get userName async =>

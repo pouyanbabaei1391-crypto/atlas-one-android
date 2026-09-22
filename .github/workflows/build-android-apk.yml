@@ -1,6 +1,11 @@
 name: Build Atlas Android APK
 on:
   workflow_dispatch:
+    inputs:
+      bundle_model:
+        description: Include Gemma 3 4B weights in APK (about 2.49 GB)
+        type: boolean
+        default: true
   push:
     branches: [main, master]
 permissions:
@@ -11,7 +16,7 @@ concurrency:
 jobs:
   build-apk:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -25,7 +30,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Test and build English voice edition
+      - name: Test and build local Gemma edition
+        env:
+          ATLAS_BUNDLE_MODEL: ${{ github.event_name != 'workflow_dispatch' || inputs.bundle_model }}
         run: python english_voice_addon/build.py android
       - name: Upload Android installer
         uses: actions/upload-artifact@v4
@@ -33,3 +40,4 @@ jobs:
           name: Atlas-One-Android-APK
           path: dist/Atlas-One-Android.apk
           if-no-files-found: error
+          compression-level: 0

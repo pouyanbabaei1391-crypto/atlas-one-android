@@ -6,6 +6,8 @@ import 'package:provider/provider.dart';
 import '../core/assistant_controller.dart';
 import '../models/app_target.dart';
 import 'settings_screen.dart';
+import 'local_ai_screen.dart';
+import '../core/local_gemma_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -28,7 +30,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final c = context.watch<AssistantController>();
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Atlas Voice 2'),
+        title: const Text('Atlas Local · Gemma 3'),
         actions: [
           IconButton(
             onPressed: () => Navigator.push(
@@ -125,6 +127,18 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
+            if (c.localAiEnabled)
+              AnimatedBuilder(
+                animation: LocalGemmaService.instance,
+                builder: (context, _) => ListTile(
+                  leading: const Icon(Icons.memory_rounded),
+                  title: Text(c.ai.local.ready ? 'Gemma 3 4B · On this phone' : 'Prepare your local AI'),
+                  subtitle: Text(c.ai.local.ready ? 'No AI server required' : 'One-time model setup required'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: c.busy || c.microphoneEnabled ? null : () => Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const LocalAiScreen())),
+                ),
+              ),
             if (c.liveTranscript.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
@@ -247,6 +261,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 8),
                   const Text('Speak naturally in English.', textAlign: TextAlign.center),
+                  if (c.firstSpeechMilliseconds != null)
+                    Text('Speech started in ${c.firstSpeechMilliseconds} ms'),
                   if (c.microphoneEnabled) ...[
                     const SizedBox(height: 8),
                     LinearProgressIndicator(value: c.microphoneLevel),
@@ -263,7 +279,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       TextButton.icon(
                         onPressed: c.busy ? null : c.testAiConnection,
                         icon: const Icon(Icons.network_check),
-                        label: const Text('Test AI connection'),
+                        label: Text(c.localAiEnabled ? 'Check local model' : 'Test AI connection'),
                       ),
                     ],
                   ),

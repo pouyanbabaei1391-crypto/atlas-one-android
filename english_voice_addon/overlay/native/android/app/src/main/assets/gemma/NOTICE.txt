@@ -1,0 +1,2 @@
+Gemma is provided under and subject to the Gemma Terms of Use found at ai.google.dev/gemma/terms
+Quantized Gemma 3 4B IT Q4_K_M weights distributed by bartowski; see https://huggingface.co/bartowski/google_gemma-3-4b-it-GGUF

@@ -19,6 +19,7 @@ class VoiceService extends LegacyVoiceService {
   void Function()? onSessionStopped;
   void Function(double)? onLevel;
   void Function()? onReady;
+  void Function()? onSpeechStarted;
 
   final bool _android;
 
@@ -28,6 +29,7 @@ class VoiceService extends LegacyVoiceService {
         if (call.method != 'event') return;
         final event = Map<String, dynamic>.from(call.arguments as Map);
         final type = event['type'];
+        if (type == 'speaking') { onSpeechStarted?.call(); return; }
         if (type == 'stopped') {
           _listening = false;
           _request++;

@@ -37,6 +37,20 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
   bool busy = false;
   String liveTranscript = '';
   String status = 'Ready';
+  bool localAiEnabled = Platform.isAndroid;
+
+  Future<void> setLocalAiEnabled(bool value) async {
+    if (busy || microphoneEnabled || voiceStarting) return;
+    await settings.setUseLocalAi(value);
+    localAiEnabled = value;
+    notifyListeners();
+  }
+
+  Future<void> prepareLocalAi() async {
+    try { await ai.local.prepare(); status = 'Gemma 3 4B is ready on this phone'; }
+    catch (e) { status = _voiceError(e); }
+    notifyListeners();
+  }
   double microphoneLevel = 0;
   bool voiceStarting = false;
   bool testingSpeaker = false;
@@ -82,6 +96,8 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
   String streamingReply = '';
   String? voiceWarning;
   int? firstReplyMilliseconds;
+  int? firstSpeechMilliseconds;
+  Stopwatch? _responseWatch;
   final Set<Future<void>> _indexJobs = {};
 
   static const shutdownPhrases = [
@@ -104,6 +120,12 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<void> init() async {
     WidgetsBinding.instance.addObserver(this);
+    voice.onSpeechStarted = () {
+      if (busy && _responseWatch != null && firstSpeechMilliseconds == null) {
+        firstSpeechMilliseconds = _responseWatch!.elapsedMilliseconds;
+        notifyListeners();
+      }
+    };
     voice.onLevel = (level) {
       microphoneLevel = ((level + 2) / 14).clamp(0.0, 1.0).toDouble();
       notifyListeners();
@@ -125,6 +147,10 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
       notifyListeners();
     };
     unawaited(voice.prepareOutput().catchError((Object _) {}));
+    localAiEnabled = await settings.useLocalAi;
+    if (localAiEnabled) {
+      try { await ai.local.refresh(); } catch (e) { status = _voiceError(e); }
+    }
     await memory.init();
     messages.addAll(await memory.recent(limit: 30));
     notifyListeners();
@@ -132,6 +158,11 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<void> toggleMicrophone(bool value) async {
     if (value && (voiceStarting || microphoneEnabled || testingSpeaker)) return;
+    if (value && localAiEnabled && !ai.local.ready) {
+      status = 'Prepare Gemma 3 4B in Local AI setup first. No server is needed.';
+      notifyListeners();
+      return;
+    }
     final request = ++_microphoneRequest;
     _listenTimer?.cancel();
     if (!value) {
@@ -270,6 +301,8 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
     final shouldSpeak = speakReply ?? microphoneEnabled;
     final watch = Stopwatch()..start();
     firstReplyMilliseconds = null;
+    firstSpeechMilliseconds = null;
+    _responseWatch = watch;
     streamingReply = '';
     _listenEpoch++;
     _listenTimer?.cancel();
@@ -364,10 +397,12 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
       chunks.dispose();
       await speechQueue;
       if (epoch == _turnEpoch) {
-        status = 'AI connection failed: ${_voiceError(e)}';
+        status = '${localAiEnabled ? 'Local Gemma' : 'AI connection'}: ${_voiceError(e)}';
         voiceWarning = status;
         if (shouldSpeak && speechEpoch == _speechEpoch) {
-          try { await voice.speak('I heard you, but could not get an answer from the AI server. Please check the server address in Settings.'); }
+          try { await voice.speak(localAiEnabled
+              ? 'I heard you. Local processing stopped. Please check the model status on screen.'
+              : 'I heard you, but the AI server did not respond. Please check the server settings.'); }
           catch (audioError) { voiceWarning = '$status Voice: ${_voiceError(audioError)}'; }
         }
       }
@@ -415,6 +450,7 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
     _turnEpoch++;
     _speechEpoch++;
     ai.cancelTurn();
+    _responseWatch = null;
     busy = false;
     streamingReply = '';
     _visionTurn = false;

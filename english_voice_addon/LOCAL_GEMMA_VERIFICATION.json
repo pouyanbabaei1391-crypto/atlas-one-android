@@ -1,0 +1,23 @@
+{
+  "edition": "0.6.0+6",
+  "model_size": 2489758112,
+  "model_sha256": "4996030242583a40aa151ff93f49ed787ac8c25e4120c3ae4588b2e2a7d1ae94",
+  "llama_revision": "c350a40bbd0ba0658793f0fc74a8b3b3ab65135e",
+  "host_core_compiled": true,
+  "host_real_model_inference": true,
+  "host_json_output_valid": true,
+  "host_cancellation_passed": true,
+  "jni_syntax_compile_passed": true,
+  "host_math_first_token_ms": [
+    628,
+    85
+  ],
+  "timing_scope": "First token of a short math answer on the host; not Android or STT/TTS latency.",
+  "bundler_tests_passed": true,
+  "original_files_byte_identical": 42,
+  "flutter_tests_executed": false,
+  "android_apk_built": false,
+  "phone_tested": false,
+  "weights_in_source_zip": false,
+  "default_cloud_build_bundles_weights": true
+}

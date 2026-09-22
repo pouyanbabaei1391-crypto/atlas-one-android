@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../core/assistant_controller.dart';
+import 'dart:io';
+import 'local_ai_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -49,6 +51,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          if (Platform.isAndroid) ...[
+            SwitchListTile(
+              title: const Text('Run Gemma on this phone'),
+              subtitle: const Text('Local mode uses no AI server. Turn off to use your existing server configuration.'),
+              value: c.localAiEnabled,
+              onChanged: c.busy || c.microphoneEnabled || c.voiceStarting ? null : c.setLocalAiEnabled,
+            ),
+            ListTile(title: const Text('Local AI setup'), trailing: const Icon(Icons.chevron_right),
+              onTap: c.busy || c.microphoneEnabled ? null : () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LocalAiScreen()))),
+            const Divider(),
+          ],
           TextField(
             controller: name,
             textDirection: TextDirection.ltr,

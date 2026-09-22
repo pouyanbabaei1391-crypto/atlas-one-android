@@ -4,6 +4,8 @@ import argparse
 import shutil
 import subprocess
 import sys
+import os
+from local_build import bundle_model, link_or_copy
 
 ROOT = Path(__file__).resolve().parents[1]
 STAGE = ROOT / '.build' / 'english_voice_source'
@@ -19,6 +21,14 @@ def prepare():
     # Only the disposable staging copy changes; the original builder is untouched.
     builder = STAGE / 'build.py'
     builder.write_text(builder.read_text(encoding='utf-8').replace('Persian voice conversation', 'English voice conversation').replace('Persian speech', 'English speech'), encoding='utf-8')
+    shutil.copy2(ROOT / 'english_voice_addon' / 'local_build.py', STAGE / 'local_build.py')
+    builder_text = builder.read_text(encoding='utf-8').replace("import argparse", "import argparse\nfrom local_build import link_or_copy")
+    builder_text = builder_text.replace('    patch_android(work)', '    patch_android(work)\n    from local_build import configure\n    configure(work)')
+    builder_text = builder_text.replace('["flutter", "build", "apk", "--release"]', '["flutter", "build", "apk", "--release", "--target-platform", "android-arm64"]')
+    # Hard-link large model chunks within the same build volume to avoid redundant copies.
+    builder_text = builder_text.replace('shutil.copytree(item, target, dirs_exist_ok=True)', 'shutil.copytree(item, target, dirs_exist_ok=True, copy_function=link_or_copy)')
+    builder_text = builder_text.replace('shutil.copy2(src, dst)', 'link_or_copy(src, dst)')
+    builder.write_text(builder_text, encoding='utf-8')
     return STAGE
 
 def main():
@@ -30,11 +40,13 @@ def main():
     if args.prepare_only:
         print(stage)
         return
+    if args.target == 'android' and os.environ.get('ATLAS_BUNDLE_MODEL', 'true').lower() == 'true':
+        bundle_model(stage / 'native/android/app/src/main/assets/gemma')
     subprocess.run(['flutter', 'pub', 'get'], cwd=stage, check=True)
     subprocess.run(['flutter', 'analyze', '--no-fatal-infos', '--no-fatal-warnings', 'lib', 'test'], cwd=stage, check=True)
     subprocess.run(['flutter', 'test'], cwd=stage, check=True)
     subprocess.run([sys.executable, 'build.py', args.target], cwd=stage, check=True)
-    shutil.copytree(stage / 'dist', ROOT / 'dist', dirs_exist_ok=True)
+    shutil.copytree(stage / 'dist', ROOT / 'dist', dirs_exist_ok=True, copy_function=link_or_copy)
 
 if __name__ == '__main__':
     main()

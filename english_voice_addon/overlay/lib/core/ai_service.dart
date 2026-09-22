@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -5,6 +6,8 @@ import 'package:http/http.dart' as http;
 import '../models/chat_message.dart';
 import 'settings_service.dart';
 import 'reply_stream.dart';
+import 'local_gemma_service.dart';
+import 'gemma_prompt.dart';
 
 class AiAction {
   final String type;
@@ -29,15 +32,22 @@ class AiTurn {
 
 class AiService {
   final SettingsService settings;
+  final LocalGemmaService local = LocalGemmaService.instance;
   AiService(this.settings);
   http.Client? _turnClient;
   int _requestEpoch = 0;
   void cancelTurn() {
     _requestEpoch++;
     _turnClient?.close();
+    unawaited(local.cancel().catchError((Object _) {}));
   }
 
   Future<String> checkConnection() async {
+    if (await settings.useLocalAi) {
+      await local.refresh();
+      return local.ready ? 'Gemma 3 4B is ready on this phone. No AI server is used.'
+          : 'Local Gemma is not loaded. Open Local AI setup and prepare the model.';
+    }
     final base = (await settings.baseUrl).replaceAll(RegExp(r'/$'), '');
     final key = await settings.apiKey;
     final client = http.Client();
@@ -117,6 +127,27 @@ ${memoryContext == null || memoryContext.trim().isEmpty ? '' : '\nRelevant memor
       });
     }
 
+    if (await settings.useLocalAi) {
+      if (imageBase64 != null) {
+        throw StateError('Local voice mode processes text. Select server mode in Settings for camera or screen analysis.');
+      }
+      final prompt = gemmaPrompt(system, history, userText);
+      final raw = await local.generate(prompt, (text) {
+        if (requestEpoch == _requestEpoch) onReply?.call(streamedReply(text));
+      });
+      if (requestEpoch != _requestEpoch) throw StateError('Request cancelled');
+      AiTurn turn;
+      try { turn = _parseTurn(raw); }
+      catch (_) {
+        final reply = streamedReply(raw);
+        if (reply.trim().isEmpty) rethrow;
+        // Never execute actions from truncated or malformed local output.
+        turn = AiTurn(reply: reply);
+      }
+      onReply?.call(turn.reply);
+      return turn;
+    }
+
     final endpoint = Uri.parse('$base/chat/completions');
     final headers = {
       'content-type': 'application/json',
@@ -136,7 +167,7 @@ ${memoryContext == null || memoryContext.trim().isEmpty ? '' : '\nRelevant memor
           'stream': streaming,
           if (jsonMode) 'response_format': {'type': 'json_object'},
         });
-      return client.send(req).timeout(Duration(seconds: voiceMode ? 25 : 90));
+      return client.send(req).timeout(Duration(seconds: voiceMode ? 8 : 20));
     }
     try {
       var streaming = onReply != null;
@@ -157,7 +188,7 @@ ${memoryContext == null || memoryContext.trim().isEmpty ? '' : '\nRelevant memor
       if (type.contains('text/event-stream')) {
         final raw = StringBuffer();
         await for (final line in response.stream
-            .timeout(const Duration(seconds: 90))
+            .timeout(const Duration(seconds: 20))
             .transform(utf8.decoder).transform(const LineSplitter())) {
           if (!line.startsWith('data:')) continue;
           final data = line.substring(5).trim();
@@ -178,7 +209,7 @@ ${memoryContext == null || memoryContext.trim().isEmpty ? '' : '\nRelevant memor
         onReply?.call(turn.reply);
         return turn;
       }
-      final body = await response.stream.timeout(const Duration(seconds: 90))
+      final body = await response.stream.timeout(const Duration(seconds: 20))
           .transform(utf8.decoder).join();
       final decoded = jsonDecode(body) as Map<String, dynamic>;
       final turn = _parseTurn(_extractContent(decoded));
@@ -240,6 +271,7 @@ ${memoryContext == null || memoryContext.trim().isEmpty ? '' : '\nRelevant memor
   }
 
   Future<List<double>?> embedding(String text) async {
+    if (await settings.useLocalAi) return null;
     try {
       final base = (await settings.baseUrl).replaceAll(RegExp(r'/$'), '');
       final key = await settings.apiKey;
