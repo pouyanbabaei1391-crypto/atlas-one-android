@@ -37,6 +37,25 @@ class AiService {
     _turnClient?.close();
   }
 
+  Future<String> checkConnection() async {
+    final base = (await settings.baseUrl).replaceAll(RegExp(r'/$'), '');
+    final key = await settings.apiKey;
+    final client = http.Client();
+    try {
+      final response = await client.get(Uri.parse('$base/models'), headers: {
+        if (key.isNotEmpty) 'authorization': 'Bearer $key',
+      }).timeout(const Duration(seconds: 8));
+      if (response.statusCode != 200) throw StateError('HTTP ${response.statusCode}. Check server URL and API key.');
+      final decoded = jsonDecode(response.body);
+      final models = decoded is Map ? decoded['data'] : null;
+      final selected = await settings.model;
+      if (models is List && !models.any((m) => m is Map && m['id'] == selected)) {
+        return 'Server connected, but model $selected was not listed. Check the model name.';
+      }
+      return 'AI server connected. Model: $selected';
+    } finally { client.close(); }
+  }
+
   Future<AiTurn> chat({
     required List<ChatMessage> history,
     required String userText,
@@ -117,7 +136,7 @@ ${memoryContext == null || memoryContext.trim().isEmpty ? '' : '\nRelevant memor
           'stream': streaming,
           if (jsonMode) 'response_format': {'type': 'json_object'},
         });
-      return client.send(req).timeout(const Duration(seconds: 90));
+      return client.send(req).timeout(Duration(seconds: voiceMode ? 25 : 90));
     }
     try {
       var streaming = onReply != null;

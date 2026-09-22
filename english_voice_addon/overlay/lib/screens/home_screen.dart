@@ -28,7 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final c = context.watch<AssistantController>();
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Atlas'),
+        title: const Text('Atlas Voice 2'),
         actions: [
           IconButton(
             onPressed: () => Navigator.push(
@@ -238,15 +238,35 @@ class _HomeScreenState extends State<HomeScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: FilledButton.icon(
-                          onPressed: () => c.toggleMicrophone(!c.microphoneEnabled),
+                          onPressed: c.voiceStarting || c.testingSpeaker ? null : () => c.toggleMicrophone(!c.microphoneEnabled),
                           icon: Icon(c.microphoneEnabled ? Icons.mic_off_rounded : Icons.mic_rounded),
-                          label: Text(c.microphoneEnabled ? 'End voice chat' : 'Start voice chat'),
+                          label: Text(c.voiceStarting ? 'Starting voice…' : c.microphoneEnabled ? 'End voice chat' : 'Start voice chat'),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 8),
                   const Text('Speak naturally in English.', textAlign: TextAlign.center),
+                  if (c.microphoneEnabled) ...[
+                    const SizedBox(height: 8),
+                    LinearProgressIndicator(value: c.microphoneLevel),
+                    const Text('Microphone input level'),
+                  ],
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    children: [
+                      TextButton.icon(
+                        onPressed: c.microphoneEnabled || c.voiceStarting || c.busy || c.testingSpeaker ? null : c.testSpeaker,
+                        icon: const Icon(Icons.volume_up_rounded),
+                        label: Text(c.testingSpeaker ? 'Testing speaker…' : 'Test speaker'),
+                      ),
+                      TextButton.icon(
+                        onPressed: c.busy ? null : c.testAiConnection,
+                        icon: const Icon(Icons.network_check),
+                        label: const Text('Test AI connection'),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),

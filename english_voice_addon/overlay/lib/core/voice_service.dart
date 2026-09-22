@@ -1,147 +1,159 @@
 import 'dart:async';
+import 'dart:io';
+import 'package:flutter/services.dart';
+import 'legacy_voice_service.dart';
 
-import 'package:flutter_tts/flutter_tts.dart';
-import 'package:speech_to_text/speech_to_text.dart';
+/// Android uses a process-owned engine and a visible microphone foreground service.
+/// Other platforms retain their original speech implementation.
+class VoiceService extends LegacyVoiceService {
+  static const _channel = MethodChannel('atlas.one/voice');
+  bool _listening = false;
+  bool _outputReady = false;
+  bool _speaking = false;
+  int _request = 0;
+  int _outputEpoch = 0;
+  Future<void>? _preparing;
+  void Function(String, bool)? _text;
+  void Function(String)? _error;
+  void Function()? _done;
+  void Function()? onSessionStopped;
+  void Function(double)? onLevel;
+  void Function()? onReady;
 
-class VoiceService {
-  final SpeechToText _stt = SpeechToText();
-  final FlutterTts _tts = FlutterTts();
-  bool _ready = false;
-  Future<void>? _initializing;
-  Future<void>? _ttsInitializing;
-  String? _englishLocale;
-  bool englishVoiceAvailable = false;
-  // Compatibility alias retained for existing integrations.
-  bool get persianVoiceAvailable => englishVoiceAvailable;
-  bool isSpeaking = false;
-  int _speechGeneration = 0;
-  Completer<void>? _speechStopped;
-  void Function(String error)? _onError;
-  void Function()? _onDone;
+  final bool _android;
 
-  Future<void> init() async {
-    try {
-      await (_initializing ??= _init());
-    } catch (_) {
-      _initializing = null;
-      rethrow;
-    }
-    if (!_ready) _initializing = null;
-  }
-
-  Future<void> _init() async {
-    _ready = await _stt.initialize(
-      onError: (error) => _onError?.call(error.errorMsg),
-      onStatus: (status) {
-        if (status == 'done' || status == 'notListening') _onDone?.call();
-      },
-      debugLogging: false,
-      finalTimeout: const Duration(milliseconds: 200),
-    );
-    if (_ready) {
-      for (final locale in await _stt.locales()) {
-        if (locale.localeId.toLowerCase().startsWith('en')) {
-          _englishLocale = locale.localeId;
-          break;
+  VoiceService({bool? android}) : _android = android ?? Platform.isAndroid {
+    if (_android) {
+      _channel.setMethodCallHandler((call) async {
+        if (call.method != 'event') return;
+        final event = Map<String, dynamic>.from(call.arguments as Map);
+        final type = event['type'];
+        if (type == 'stopped') {
+          _listening = false;
+          _request++;
+          onSessionStopped?.call();
+          return;
         }
-      }
+        if (event['id'] != _request) return;
+        switch (type) {
+          case 'ready':
+            onReady?.call();
+            break;
+          case 'level':
+            onLevel?.call(((event['value'] as num?)?.toDouble() ?? 0).clamp(-2, 12).toDouble());
+            break;
+          case 'text':
+            final finalResult = event['final'] == true;
+            if (finalResult) _listening = false;
+            _text?.call(event['text'] as String? ?? '', finalResult);
+            break;
+          case 'done':
+            _listening = false;
+            _done?.call();
+            break;
+          case 'error':
+            _listening = false;
+            final code = event['code'];
+            if (event['retry'] == true) {
+              _error?.call('retry:$code:${event['message']}');
+            } else {
+              _error?.call(event['message'] as String? ?? 'Speech recognition is unavailable.');
+            }
+            break;
+        }
+      });
     }
-    await _ensureTts();
   }
 
-  Future<void> prepareOutput() => _ensureTts();
+  Future<void> startSession() async {
+    if (_android) await _channel.invokeMethod<void>('startSession');
+  }
 
-  Future<void> _ensureTts() async {
+  Future<void> endSession() async {
+    if (_android) await _channel.invokeMethod<void>('endSession');
+  }
+
+  Future<void> updateStatus(String text) async {
+    if (_android) {
+      try { await _channel.invokeMethod<void>('status', {'text': text}); } catch (_) {}
+    }
+  }
+
+  @override
+  bool get englishVoiceAvailable => _android ? _outputReady : super.englishVoiceAvailable;
+  @override
+  bool get isListening => _android ? _listening : super.isListening;
+  @override
+  bool get isSpeaking => _android ? _speaking : super.isSpeaking;
+
+  @override
+  Future<void> init() async {
+    // STT must not fail merely because a TTS voice is unavailable.
+    if (!_android) await super.init();
+  }
+
+  @override
+  Future<void> prepareOutput() async {
+    if (!_android) { await super.prepareOutput(); return; }
+    if (_outputReady) return;
+    await (_preparing ??= _prepareNative());
+  }
+
+  Future<void> _prepareNative() async {
     try {
-      await (_ttsInitializing ??= _initTts());
-    } catch (_) {
-      _ttsInitializing = null;
-      rethrow;
-    }
-    if (!englishVoiceAvailable) _ttsInitializing = null;
+      await _channel.invokeMethod<void>('prepareOutput');
+      _outputReady = true;
+    } finally { _preparing = null; }
   }
 
-  Future<void> _initTts() async {
-    final languages = await _tts.getLanguages;
-    if (languages is List) {
-      final english = languages.map((e) => e.toString())
-          .where((e) => e.toLowerCase().startsWith('en')).toList();
-      if (english.isNotEmpty) {
-        await _tts.setLanguage(english.first);
-        englishVoiceAvailable = true;
-      }
-    }
-    await _tts.setSpeechRate(0.56);
-    await _tts.setPitch(1.0);
-    await _tts.setVolume(1.0);
-    await _tts.awaitSpeakCompletion(true);
-  }
-
-  bool get isListening => _stt.isListening;
-
-  Future<void> listen({
-    required void Function(String text, bool finalResult) onText,
-    void Function(String error)? onError,
-    void Function()? onDone,
-  }) async {
-    _onError = onError;
-    _onDone = onDone;
-    await init();
-    if (!_ready || _englishLocale == null) {
-      onError?.call('English speech recognition is unavailable on this device.');
+  @override
+  Future<void> listen({required void Function(String, bool) onText,
+      void Function(String)? onError, void Function()? onDone}) async {
+    if (!_android) {
+      await super.listen(onText: onText, onError: onError, onDone: onDone);
       return;
     }
-    await _stt.listen(
-      localeId: _englishLocale,
-      pauseFor: const Duration(milliseconds: 500),
-      listenFor: const Duration(minutes: 2),
-      listenOptions: SpeechListenOptions(
-        listenMode: ListenMode.dictation,
-        partialResults: true,
-        cancelOnError: true,
-      ),
-      onResult: (result) => onText(result.recognizedWords, result.finalResult),
-    );
+    _text = onText;
+    _error = onError;
+    _done = onDone;
+    final request = ++_request;
+    _listening = true;
+    try { await _channel.invokeMethod<void>('listen', {'id': request}); }
+    catch (e) {
+      if (request != _request) return;
+      _listening = false;
+      onError?.call(e is PlatformException ? (e.message ?? e.code) : e.toString());
+    }
   }
 
-  Future<void> stopListening() async {
-    if (_stt.isListening) await _stt.stop();
-  }
+  @override
+  Future<void> stopListening() => cancelListening();
 
+  @override
   Future<void> cancelListening() async {
-    if (_stt.isListening) await _stt.cancel();
+    if (!_android) { await super.cancelListening(); return; }
+    _request++;
+    _listening = false;
+    await _channel.invokeMethod<void>('cancelListening');
   }
 
+  @override
   Future<void> speak(String text) async {
-    final generation = _speechGeneration;
-    await _ensureTts();
-    if (generation != _speechGeneration) return;
-    if (!englishVoiceAvailable) {
-      throw StateError('No English voice is installed or enabled on this device.');
-    }
-    if (text.trim().isEmpty) return;
-    isSpeaking = true;
-    final stopped = Completer<void>();
-    _speechStopped = stopped;
-    try {
-      await Future.any<void>([
-        _tts.speak(text.trim()).then<void>((_) {}),
-        stopped.future,
-      ]).timeout(const Duration(seconds: 45));
-    } finally {
-      if (generation == _speechGeneration) {
-        isSpeaking = false;
-        _speechStopped = null;
-      }
-    }
+    if (!_android) { await super.speak(text); return; }
+    final epoch = _outputEpoch;
+    await prepareOutput();
+    if (epoch != _outputEpoch || text.trim().isEmpty) return;
+    _speaking = true;
+    try { await _channel.invokeMethod<void>('speak', {'text': text.trim()}); }
+    catch (_) { _outputReady = false; rethrow; }
+    finally { if (epoch == _outputEpoch) _speaking = false; }
   }
 
+  @override
   Future<void> stopSpeaking() async {
-    _speechGeneration++;
-    final stopped = _speechStopped;
-    _speechStopped = null;
-    if (stopped != null && !stopped.isCompleted) stopped.complete();
-    await _tts.stop();
-    isSpeaking = false;
+    if (!_android) { await super.stopSpeaking(); return; }
+    _outputEpoch++;
+    _speaking = false;
+    await _channel.invokeMethod<void>('stopSpeaking');
   }
 }

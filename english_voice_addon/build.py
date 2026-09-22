@@ -31,6 +31,7 @@ def main():
         print(stage)
         return
     subprocess.run(['flutter', 'pub', 'get'], cwd=stage, check=True)
+    subprocess.run(['flutter', 'analyze', '--no-fatal-infos', '--no-fatal-warnings', 'lib', 'test'], cwd=stage, check=True)
     subprocess.run(['flutter', 'test'], cwd=stage, check=True)
     subprocess.run([sys.executable, 'build.py', args.target], cwd=stage, check=True)
     shutil.copytree(stage / 'dist', ROOT / 'dist', dirs_exist_ok=True)

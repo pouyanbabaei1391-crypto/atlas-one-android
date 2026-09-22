@@ -16,6 +16,9 @@ import io.flutter.plugin.common.MethodChannel
 import java.io.ByteArrayOutputStream
 
 class MainActivity : FlutterActivity() {
+    override fun provideFlutterEngine(context: android.content.Context): FlutterEngine = AtlasVoiceHost.engine(context)
+    override fun shouldDestroyEngineWithHost(): Boolean = false
+
     private val channelName = "atlas.one/native"
     private val screenRequest = 64001
     private var pendingScreenResult: MethodChannel.Result? = null

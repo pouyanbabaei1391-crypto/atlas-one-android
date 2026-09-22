@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:uuid/uuid.dart';
 
@@ -36,6 +37,35 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
   bool busy = false;
   String liveTranscript = '';
   String status = 'Ready';
+  double microphoneLevel = 0;
+  bool voiceStarting = false;
+  bool testingSpeaker = false;
+  int _recognitionRetries = 0;
+  String _lastNotificationStatus = '';
+
+  String _voiceError(Object error) => error is PlatformException
+      ? (error.message ?? error.code) : error.toString();
+
+  Future<void> testSpeaker() async {
+    if (testingSpeaker || busy || microphoneEnabled || voiceStarting) return;
+    testingSpeaker = true;
+    notifyListeners();
+    try {
+      await voice.speak('Hello. This is Atlas. My English voice is ready.');
+      status = 'Speaker test finished. If silent, check media volume and Bluetooth output.';
+      voiceWarning = null;
+    } catch (e) { voiceWarning = _voiceError(e); status = 'Speaker test failed'; }
+    finally { testingSpeaker = false; notifyListeners(); }
+  }
+
+  Future<void> testAiConnection() async {
+    status = 'Checking AI server…';
+    notifyListeners();
+    try { status = await ai.checkConnection(); }
+    catch (e) { status = 'AI server unavailable: ${_voiceError(e)}'; }
+    notifyListeners();
+  }
+
 
   Timer? _listenTimer;
   Timer? _visionTimer;
@@ -74,6 +104,26 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<void> init() async {
     WidgetsBinding.instance.addObserver(this);
+    voice.onLevel = (level) {
+      microphoneLevel = ((level + 2) / 14).clamp(0.0, 1.0).toDouble();
+      notifyListeners();
+    };
+    voice.onReady = () {
+      if (microphoneEnabled && !busy) {
+        status = 'Listening in English…';
+        notifyListeners();
+      }
+    };
+    voice.onSessionStopped = () {
+      if (!microphoneEnabled) return;
+      microphoneEnabled = false;
+      _listenEpoch++;
+      _listenTimer?.cancel();
+      unawaited(_cancelTurn());
+      microphoneLevel = 0;
+      status = 'Voice chat stopped';
+      notifyListeners();
+    };
     unawaited(voice.prepareOutput().catchError((Object _) {}));
     await memory.init();
     messages.addAll(await memory.recent(limit: 30));
@@ -81,43 +131,53 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> toggleMicrophone(bool value) async {
+    if (value && (voiceStarting || microphoneEnabled || testingSpeaker)) return;
     final request = ++_microphoneRequest;
     _listenTimer?.cancel();
     if (!value) {
       microphoneEnabled = false;
+      voiceStarting = false;
       _listenEpoch++;
-      _speechEpoch++;
+      await _cancelTurn();
       await voice.cancelListening();
-      await voice.stopSpeaking();
+      await voice.endSession();
+      microphoneLevel = 0;
       status = 'Microphone is off';
       notifyListeners();
       return;
     }
+    voiceStarting = true;
     final access = _accessEpoch;
     status = 'Starting microphone…';
+    voiceWarning = null;
     notifyListeners();
-    final result = await Permission.microphone.request();
-    if (access != _accessEpoch || request != _microphoneRequest) return;
-    if (!result.isGranted) {
-      status = 'Microphone permission was denied.';
-      notifyListeners();
-      return;
-    }
     try {
+      final permission = await Permission.microphone.request();
+      if (request != _microphoneRequest || access != _accessEpoch) return;
+      if (!permission.isGranted) throw StateError('Microphone permission was denied. Enable it in Android app settings.');
+      if (Platform.isAndroid) await Permission.notification.request();
+      if (request != _microphoneRequest || access != _accessEpoch) return;
+      await voice.startSession();
+      if (request != _microphoneRequest || access != _accessEpoch) return;
       await voice.init();
-    } catch (_) {
-      if (access != _accessEpoch || request != _microphoneRequest) return;
-      status = 'Could not initialize voice. Check your speech settings.';
+      microphoneEnabled = true;
+      _recognitionRetries = 0;
+      // A local spoken greeting proves TTS works independently of the AI server.
+      status = 'Preparing English voice…';
       notifyListeners();
-      return;
+      try { await voice.speak('I am ready. Go ahead.'); }
+      catch (e) { voiceWarning = _voiceError(e); }
+      if (request != _microphoneRequest || access != _accessEpoch || !microphoneEnabled) return;
+      await _listenLoop();
+    } catch (e) {
+      if (request != _microphoneRequest || access != _accessEpoch) return;
+      microphoneEnabled = false;
+      status = _voiceError(e);
+      voiceWarning = status;
+      await voice.endSession();
+    } finally {
+      if (request == _microphoneRequest) { voiceStarting = false; notifyListeners(); }
     }
-    if (access != _accessEpoch || request != _microphoneRequest) return;
-    microphoneEnabled = true;
-    voiceWarning = voice.englishVoiceAvailable ? null
-        : 'Enable an English voice in your device speech settings.';
-    status = voiceWarning ?? 'Listening…';
-    notifyListeners();
-    await _listenLoop();
   }
 
   void _scheduleListen([int delay = 120]) {
@@ -155,6 +215,7 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
       await voice.listen(
         onText: (text, finalResult) {
           if (epoch != _listenEpoch || !microphoneEnabled || busy) return;
+          if (text.trim().isNotEmpty) _recognitionRetries = 0;
           liveTranscript = text;
           notifyListeners();
           if (finalResult) _acceptSpeech(text, epoch);
@@ -164,19 +225,27 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
         },
         onError: (error) {
           if (epoch != _listenEpoch || !microphoneEnabled) return;
-          if (error == 'error_no_match' || error == 'error_speech_timeout') {
+          if (error.startsWith('retry:') || error == 'error_no_match' || error == 'error_speech_timeout') {
             liveTranscript = '';
-            _scheduleListen(450);
+            final code = error.startsWith('retry:') ? int.tryParse(error.split(':')[1]) : 7;
+            final silent = code == 6 || code == 7;
+            _recognitionRetries = silent ? 0 : _recognitionRetries + 1;
+            final delay = silent ? 250 : code == 10 ? 15000 : (600 * (1 << _recognitionRetries.clamp(0, 4).toInt())).clamp(600, 10000).toInt();
+            status = silent ? 'Listening…' : error.split(':').skip(2).join(':');
+            _scheduleListen(delay);
           } else {
             microphoneEnabled = false;
-            status = 'Speech recognition is unavailable. Check permissions, connectivity, and English language support.';
+            status = error;
+            voiceWarning = error;
+            unawaited(voice.endSession());
           }
           notifyListeners();
         },
       );
-    } catch (_) {
+    } catch (e) {
       microphoneEnabled = false;
-      status = 'Could not start the microphone. Check permissions and speech settings.';
+      status = _voiceError(e);
+      unawaited(voice.endSession());
       notifyListeners();
     } finally {
       _startingListen = false;
@@ -214,8 +283,9 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
         if (epoch != _turnEpoch || speechEpoch != _speechEpoch) return;
         try {
           await voice.speak(chunk);
-        } catch (_) {
-          voiceWarning = 'Could not play the English voice. Check your speech settings.';
+        } catch (e) {
+          voiceWarning = _voiceError(e);
+          notifyListeners();
         }
       });
     });
@@ -290,11 +360,16 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
       }
       await speechQueue;
       if (epoch == _turnEpoch) status = voiceWarning ?? 'Ready';
-    } catch (_) {
+    } catch (e) {
       chunks.dispose();
       await speechQueue;
       if (epoch == _turnEpoch) {
-        status = 'The response was interrupted. Check the server connection, model, and permissions.';
+        status = 'AI connection failed: ${_voiceError(e)}';
+        voiceWarning = status;
+        if (shouldSpeak && speechEpoch == _speechEpoch) {
+          try { await voice.speak('I heard you, but could not get an answer from the AI server. Please check the server address in Settings.'); }
+          catch (audioError) { voiceWarning = '$status Voice: ${_voiceError(audioError)}'; }
+        }
       }
     } finally {
       chunks.dispose();
@@ -550,6 +625,8 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
     _listenEpoch++;
     await _cancelTurn();
     microphoneEnabled = false;
+    voiceStarting = false;
+    await voice.endSession();
     screenVisionEnabled = false;
     cameraEnabled = false;
     appActions.disable();
@@ -582,7 +659,13 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
 
   @override
   void notifyListeners() {
-    if (!_disposed) super.notifyListeners();
+    if (!_disposed) {
+      if (microphoneEnabled && status != _lastNotificationStatus) {
+        _lastNotificationStatus = status;
+        unawaited(voice.updateStatus(status));
+      }
+      super.notifyListeners();
+    }
   }
 
   @override
@@ -600,6 +683,7 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
     _accessEpoch++;
     ai.cancelTurn();
     unawaited(voice.cancelListening());
+    unawaited(voice.endSession());
     unawaited(voice.stopSpeaking());
     unawaited(camera.stop());
     super.dispose();
