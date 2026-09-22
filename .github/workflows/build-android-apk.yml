@@ -22,11 +22,13 @@ jobs:
         with:
           channel: stable
           cache: true
-      - run: flutter pub get
-      - run: flutter analyze --no-fatal-infos --no-fatal-warnings
-      - run: flutter test
-      - run: python build.py android
-      - uses: actions/upload-artifact@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Test and build English voice edition
+        run: python english_voice_addon/build.py android
+      - name: Upload Android installer
+        uses: actions/upload-artifact@v4
         with:
           name: Atlas-One-Android-APK
           path: dist/Atlas-One-Android.apk

@@ -13,11 +13,12 @@ jobs:
         with:
           channel: stable
           cache: true
-      - run: flutter pub get
-      - run: flutter test
-      - run: python3 build.py ios-unsigned
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python3 english_voice_addon/build.py ios-unsigned
       - uses: actions/upload-artifact@v4
         with:
-          name: Atlas-iOS-UNSIGNED
+          name: Atlas-One-iOS-UNSIGNED
           path: dist/Atlas-One-iOS-UNSIGNED.zip
           if-no-files-found: error

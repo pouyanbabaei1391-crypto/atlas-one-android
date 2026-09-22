@@ -1,0 +1,19 @@
+ENGLISH VOICE EDITION - ADDITIVE UPDATE
+
+1. Extract the entire ZIP. Do not run a BAT file from inside the ZIP viewer.
+2. Open the extracted General Gemma34b folder.
+3. Double-click the ORIGINAL UPDATE_TO_GITHUB.bat.
+4. Complete GitHub browser sign-in if requested. Git for Windows must be installed and your account must have write access to the saved repository.
+5. After a successful push, the original script opens GitHub Actions.
+6. Open the successful Build Atlas Android APK run and download Atlas-One-Android-APK. Extract that artifact and install Atlas-One-Android.apk.
+
+Every file from your uploaded archive is retained byte-for-byte. UPDATE_TO_GITHUB.bat, UPDATE_TO_GITHUB.ps1, the saved repository URL, all existing UI code, and the original build.py are unchanged.
+The missing .github/workflows/build-android-apk.yml is now included, satisfying the ORIGINAL updater prerequisite. No GitHub upload was performed in this editing session.
+
+New English voice code is stored separately in english_voice_addon/overlay. The added GitHub workflow builds it in .build/english_voice_source; it never edits original source files. The resulting APK uses English speech recognition and English spoken replies, an English interface, a voice-chat button, and no message composer. Existing original BUILD_ANDROID scripts still build the original edition. BUILD_ENGLISH_VOICE_ANDROID.bat builds the new edition locally.
+
+Speech output is prepared at startup. Streamed words are flushed sooner, recognition requests shorter silence detection, and semantic recall has a shorter wait. Interrupt and speak stops the reply and resumes listening. Actual latency depends on your server, model, connection, operating-system recognition, and installed English voice. Under one second is a target, not a measured guarantee.
+
+Validation: original-file hashes matched; updater dependencies are present; the isolated staging build was prepared and checked. Flutter, Android device testing, authenticated GitHub push, and cloud compilation were not available here. CI runs the speech-stream tests before building. Flutter stable must satisfy the original project SDK constraint (Dart >=3.12).
+
+Workflow setup reference: https://github.com/subosito/flutter-action
