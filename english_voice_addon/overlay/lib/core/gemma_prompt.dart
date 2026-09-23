@@ -1,12 +1,13 @@
 import '../models/chat_message.dart';
 
-String gemmaPrompt(String instructions, List<ChatMessage> history, String message) {
+String gemmaPrompt(String instructions, List<ChatMessage> history, String message,
+    {bool fastVoice = false}) {
   String clean(String text) => text.replaceAll('<start_of_turn>', '[start of turn]')
       .replaceAll('<end_of_turn>', '[end of turn]').replaceAll('<bos>', '');
   final recent = <ChatMessage>[];
-  var budget = 2200;
+  var budget = fastVoice ? 600 : 2200;
   for (final item in history.reversed) {
-    if (item.content.length > budget || recent.length >= 4) break;
+    if (item.content.length > budget || recent.length >= (fastVoice ? 2 : 4)) break;
     recent.insert(0, item);
     budget -= item.content.length;
   }

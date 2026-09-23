@@ -149,7 +149,24 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
     unawaited(voice.prepareOutput().catchError((Object _) {}));
     localAiEnabled = await settings.useLocalAi;
     if (localAiEnabled) {
-      try { await ai.local.refresh(); } catch (e) { status = _voiceError(e); }
+      try {
+        await ai.local.refresh();
+        final accepted = await settings.modelTermsAccepted;
+        if (!ai.local.ready && (ai.local.installed || accepted)) {
+          status = ai.local.installed
+              ? 'Loading your existing Gemma model…'
+              : 'Preparing Gemma while Hybrid cloud stays available…';
+          unawaited(ai.local.prepare().then((_) {
+            if (_disposed) return;
+            status = 'Hybrid ready · fast cloud with private local fallback';
+            notifyListeners();
+          }).catchError((Object error) {
+            if (_disposed) return;
+            status = 'Cloud remains available · local setup needs attention';
+            notifyListeners();
+          }));
+        }
+      } catch (e) { status = _voiceError(e); }
     }
     await memory.init();
     messages.addAll(await memory.recent(limit: 30));
@@ -159,9 +176,15 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
   Future<void> toggleMicrophone(bool value) async {
     if (value && (voiceStarting || microphoneEnabled || testingSpeaker)) return;
     if (value && localAiEnabled && !ai.local.ready) {
-      status = 'Prepare Gemma 3 4B in Local AI setup first. No server is needed.';
-      notifyListeners();
-      return;
+      final cloudReady = await settings.cloudConfigured;
+      if (ai.local.installed && !ai.local.preparing) {
+        unawaited(ai.local.prepare().catchError((Object _) {}));
+      }
+      if (!cloudReady && !ai.local.installed) {
+        status = 'Install Gemma or add a Groq API key / secure Gateway in Settings.';
+        notifyListeners();
+        return;
+      }
     }
     final request = ++_microphoneRequest;
     _listenTimer?.cancel();
@@ -196,7 +219,7 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
       // A local spoken greeting proves TTS works independently of the AI server.
       status = 'Preparing English voice…';
       notifyListeners();
-      try { await voice.speak('I am ready. Go ahead.'); }
+      try { await voice.speak('Ready.'); }
       catch (e) { voiceWarning = _voiceError(e); }
       if (request != _microphoneRequest || access != _accessEpoch || !microphoneEnabled) return;
       await _listenLoop();
@@ -359,7 +382,8 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
             : await retrieval;
       }
       if (epoch != _turnEpoch) return;
-      final turn = await ai.chat(
+      var receivedReply = false;
+      Future<AiTurn> requestAnswer({required bool forceCloud}) => ai.chat(
         history: messages.length > 1 ? messages.sublist(0, messages.length - 1) : const [],
         userText: user.content,
         imageBase64: imageBase64,
@@ -367,8 +391,10 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
         memoryContext: memoryContext,
         allowedApps: allowedApps,
         voiceMode: shouldSpeak,
+        forceCloud: forceCloud,
         onReply: (reply) {
           if (epoch != _turnEpoch || reply.isEmpty) return;
+          receivedReply = true;
           firstReplyMilliseconds ??= watch.elapsedMilliseconds;
           streamingReply = reply;
           chunks.add(reply);
@@ -376,6 +402,26 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
           notifyListeners();
         },
       );
+      final cloudConfigured = await settings.cloudConfigured;
+      final cloudFirst = shouldSpeak && cloudConfigured;
+      late AiTurn turn;
+      try {
+        turn = await requestAnswer(forceCloud: cloudFirst);
+      } catch (primaryError) {
+        if (receivedReply) rethrow;
+        await ai.local.refresh();
+        if (cloudFirst && ai.local.ready) {
+          status = 'Cloud delayed · answering privately on this phone…';
+          notifyListeners();
+          turn = await requestAnswer(forceCloud: false);
+        } else if (!cloudFirst && cloudConfigured) {
+          status = 'Local engine delayed · switching to fast cloud…';
+          notifyListeners();
+          turn = await requestAnswer(forceCloud: true);
+        } else {
+          throw primaryError;
+        }
+      }
       if (epoch != _turnEpoch) return;
       chunks.finish();
       final actionNotes = await _executeSafeActions(turn.actions);
@@ -400,9 +446,8 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
         status = '${localAiEnabled ? 'Local Gemma' : 'AI connection'}: ${_voiceError(e)}';
         voiceWarning = status;
         if (shouldSpeak && speechEpoch == _speechEpoch) {
-          try { await voice.speak(localAiEnabled
-              ? 'I heard you. Local processing stopped. Please check the model status on screen.'
-              : 'I heard you, but the AI server did not respond. Please check the server settings.'); }
+          try { await voice.speak(
+              'I heard you, but neither available AI route completed this turn. Please check the status on screen.'); }
           catch (audioError) { voiceWarning = '$status Voice: ${_voiceError(audioError)}'; }
         }
       }

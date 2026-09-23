@@ -32,9 +32,9 @@ class _LocalAiScreenState extends State<LocalAiScreen> {
           return ListView(padding: const EdgeInsets.all(20), children: [
             Text('Gemma 3 · 4B', style: Theme.of(context).textTheme.headlineMedium),
             const SizedBox(height: 12),
-            const Text('English conversation runs directly on your phone. No AI server, laptop, API key, or account is needed for local answers.'),
+            const Text('Gemma runs directly on your phone and remains available as the private fallback. When Cloud is configured, Hybrid voice uses the fastest healthy route automatically.'),
             const SizedBox(height: 12),
-            const Text('Model size: 2.49 GB. The bundled APK includes the weights. A small-installer build downloads them once during setup. Keep this screen open until setup finishes.'),
+            const Text('Model size: 2.49 GB. An already verified model is reused and loaded without another download. If it is absent, setup downloads it once and resumes interrupted downloads.'),
             const SizedBox(height: 8),
             const Text('Allow at least 3 GB of free storage in addition to the APK. The model also needs several GB of RAM; other apps and your phone hardware affect speed.'),
             const SizedBox(height: 18),

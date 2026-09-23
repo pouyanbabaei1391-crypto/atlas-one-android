@@ -41,3 +41,4 @@ jobs:
           path: dist/Atlas-One-Android.apk
           if-no-files-found: error
           compression-level: 0
+

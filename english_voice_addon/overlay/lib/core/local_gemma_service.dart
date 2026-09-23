@@ -68,7 +68,8 @@ class LocalGemmaService extends ChangeNotifier {
     _request++;
     if (_android) await _channel.invokeMethod<void>('cancel');
   }
-  Future<String> generate(String prompt, void Function(String)? onText) async {
+  Future<String> generate(String prompt, void Function(String)? onText,
+      {int maxTokens = 192}) async {
     if (!ready) throw StateError('Prepare Gemma 3 4B using Local AI setup before speaking.');
     if (_generating) throw StateError('The previous local answer is still stopping. Try again in a moment.');
     _generating = true;
@@ -82,7 +83,11 @@ class LocalGemmaService extends ChangeNotifier {
       if (id == _request) onText?.call(result);
     });
     try {
-      await _channel.invokeMethod<void>('generate', {'prompt': prompt, 'maxTokens': 192, 'id': id});
+      await _channel.invokeMethod<void>('generate', {
+        'prompt': prompt,
+        'maxTokens': maxTokens.clamp(48, 192),
+        'id': id,
+      });
       await bytes.close();
       if (id != _request) throw StateError('Generation cancelled.');
       if (result.trim().isEmpty) throw StateError('Gemma returned no answer. Try a shorter question.');

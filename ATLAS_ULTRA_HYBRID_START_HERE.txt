@@ -1,0 +1,44 @@
+ATLAS ONE - ULTRA HYBRID VOICE
+==============================
+
+WHAT IS FIXED
+-------------
+- Voice requests prefer the configured fast Cloud route.
+- If Cloud is delayed or unavailable before any reply arrives, ready local
+  Gemma answers silently; Atlas no longer speaks a generic server error when
+  a healthy local route exists.
+- The existing 2.49 GB model is detected, verified when necessary, loaded,
+  and reused. It is not downloaded again after a normal APK update.
+- If the model is absent and its terms were accepted, resumable setup starts.
+- English end-of-speech detection, response streaming, first speech chunk,
+  local prompt size, CPU threads, batch size, and warm-up were optimized.
+
+FASTEST SETUP ON THE PHONE
+--------------------------
+1. Open Atlas Settings.
+2. Keep "Hybrid: Cloud speed + local Gemma" enabled.
+3. For direct Groq development use:
+     AI server URL: https://api.groq.com/openai/v1
+     Chat model: llama-3.1-8b-instant
+     API key: your Groq API key
+4. Press Save settings.
+5. Press Test AI connection once.
+6. Start voice chat.
+
+For a public release, use the secure Gateway URL instead of putting a shared
+provider key on users' phones. The existing Hybrid Gateway build route remains
+compatible and no GitHub connection or workflow file is changed by this fix.
+
+MODEL RETENTION
+---------------
+Android preserves the downloaded model when the new APK updates the same app
+(same application ID and compatible signing key). Uninstalling the app, clearing
+app storage, or installing under another application ID removes/separates the
+private model file and requires setup again.
+
+LATENCY
+-------
+This build removes avoidable multi-second waits and targets sub-second first
+audio on a healthy nearby Cloud route. No mobile app can guarantee a fixed
+sub-second result on every network, phone, speech provider, or server load.
+

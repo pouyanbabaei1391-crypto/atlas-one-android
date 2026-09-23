@@ -53,8 +53,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           if (Platform.isAndroid) ...[
             SwitchListTile(
-              title: const Text('Run Gemma on this phone'),
-              subtitle: const Text('Local mode uses no AI server. Turn off to use your existing server configuration.'),
+              title: const Text('Hybrid: Cloud speed + local Gemma'),
+              subtitle: const Text('Cloud answers voice turns first when configured; Gemma remains the private automatic fallback.'),
               value: c.localAiEnabled,
               onChanged: c.busy || c.microphoneEnabled || c.voiceStarting ? null : c.setLocalAiEnabled,
             ),
@@ -72,7 +72,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             controller: base,
             decoration: const InputDecoration(
               labelText: 'AI server URL',
-              hintText: 'http://192.168.1.10:11434/v1',
+              hintText: 'https://api.groq.com/openai/v1',
             ),
           ),
           const SizedBox(height: 12),
@@ -89,7 +89,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           TextField(
             controller: key,
             obscureText: true,
-            decoration: const InputDecoration(labelText: 'API key (optional)'),
+            decoration: const InputDecoration(
+              labelText: 'Groq API key (or leave empty for your secure Gateway)',
+              helperText: 'Stored in Android encrypted storage. A Gateway is safer for public releases.',
+            ),
           ),
           const SizedBox(height: 18),
           FilledButton.icon(

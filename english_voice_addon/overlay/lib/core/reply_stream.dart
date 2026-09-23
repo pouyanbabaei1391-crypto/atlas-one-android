@@ -49,7 +49,7 @@ class SpeechChunks {
 
   void _scheduleFlush() {
     if (_closed || _pending.isEmpty || _flushTimer != null) return;
-    _flushTimer = Timer(const Duration(milliseconds: 140), () {
+    _flushTimer = Timer(const Duration(milliseconds: 80), () {
       _flushTimer = null;
       if (_closed) return;
       final boundary = _pending.lastIndexOf(' ');
@@ -72,7 +72,7 @@ class SpeechChunks {
       final end = RegExp(r'[.!?؟\n؛]').firstMatch(_pending);
       if (end != null) {
         _emitThrough(end.end);
-      } else if (_pending.length >= (_hasEmitted ? 100 : 36) && _pending.lastIndexOf(' ') > 12) {
+      } else if (_pending.length >= (_hasEmitted ? 72 : 24) && _pending.lastIndexOf(' ') > 8) {
         _emitThrough(_pending.lastIndexOf(' ') + 1);
       } else {
         break;

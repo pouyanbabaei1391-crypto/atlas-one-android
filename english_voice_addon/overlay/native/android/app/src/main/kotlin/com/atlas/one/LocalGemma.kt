@@ -37,6 +37,25 @@ object LocalGemma {
     private fun modelFile() = File(context.filesDir, "models/gemma-3-4b-Q4_K_M.gguf")
     private fun receipt() = File(context.filesDir, "models/gemma-3-4b.verified")
     private fun installed() = modelFile().length() == SIZE && receipt().takeIf { it.isFile }?.readText() == HASH
+    private fun sha256(file: File): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        file.inputStream().use { input ->
+            val buffer = ByteArray(4 * 1024 * 1024)
+            while (true) { checkCancelled(); val n = input.read(buffer); if (n < 0) break; digest.update(buffer, 0, n) }
+        }
+        return digest.digest().joinToString("") { "%02x".format(it) }
+    }
+
+    private fun recoverExistingModel(): Boolean {
+        val target = modelFile()
+        if (target.length() != SIZE) return false
+        setState("verifying", 1.0)
+        if (sha256(target) != HASH) return false
+        receipt().parentFile?.mkdirs()
+        receipt().writeText(HASH)
+        setState("installed", 1.0)
+        return true
+    }
     private external fun nativeLoad(path: ByteArray, threads: Int)
     private external fun nativeGenerate(prompt: ByteArray, maxTokens: Int, id: Int)
     private external fun nativeCancel()
@@ -106,7 +125,7 @@ object LocalGemma {
 
     private fun install() {
         if (!Build.SUPPORTED_ABIS.contains("arm64-v8a")) throw IllegalStateException("This Gemma build requires a 64-bit ARM Android device.")
-        if (installed()) { setState(if (ready) "ready" else "installed", 1.0); return }
+        if (installed() || recoverExistingModel()) { setState(if (ready) "ready" else "installed", 1.0); return }
         val target = modelFile()
         target.parentFile!!.mkdirs()
         val temp = File(target.parentFile, "gemma-download.part")
@@ -164,12 +183,7 @@ object LocalGemma {
         }
         if (temp.length() != SIZE) throw IllegalStateException("Download incomplete. Tap Install again to resume.")
         setState("verifying", 1.0)
-        val digest = MessageDigest.getInstance("SHA-256")
-        temp.inputStream().use { input ->
-            val buffer = ByteArray(1024 * 1024)
-            while (true) { checkCancelled(); val n = input.read(buffer); if (n < 0) break; digest.update(buffer, 0, n) }
-        }
-        val actual = digest.digest().joinToString("") { "%02x".format(it) }
+        val actual = sha256(temp)
         if (actual != HASH) { temp.delete(); throw IllegalStateException("Model integrity check failed. Retry installation.") }
         if (target.exists() && !target.delete()) throw IllegalStateException("Cannot replace model file.")
         if (!temp.renameTo(target)) throw IllegalStateException("Cannot complete model installation.")
@@ -183,10 +197,10 @@ object LocalGemma {
         setState("loading", 1.0)
         if (!libraryLoaded) { System.loadLibrary("atlas_gemma"); libraryLoaded = true }
         checkCancelled()
-        nativeLoad(modelFile().absolutePath.toByteArray(Charsets.UTF_8), Runtime.getRuntime().availableProcessors().coerceAtMost(4))
+        nativeLoad(modelFile().absolutePath.toByteArray(Charsets.UTF_8), Runtime.getRuntime().availableProcessors().coerceIn(2, 6))
         checkCancelled()
         // Populate model pages before enabling the microphone. Warm-up is part of setup.
-        nativeGenerate("<start_of_turn>user\nReply with OK.<end_of_turn>\n<start_of_turn>model\n".toByteArray(Charsets.UTF_8), 32, -1)
+        nativeGenerate("<start_of_turn>user\nOK?<end_of_turn>\n<start_of_turn>model\n".toByteArray(Charsets.UTF_8), 8, -1)
         checkCancelled()
         ready = true
         setState("ready", 1.0)

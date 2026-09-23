@@ -27,9 +27,9 @@ void AtlasEngine::load(const std::string &path, int threads) {
     model = llama_model_load_from_file(path.c_str(), mp);
     if (!model) throw std::runtime_error("Gemma could not load. Check free RAM and the model installation.");
     auto cp = llama_context_default_params();
-    cp.n_ctx = 2048;
-    cp.n_batch = 128; cp.n_ubatch = 128;
-    cp.n_threads = std::clamp(threads, 1, 4);
+    cp.n_ctx = 1536;
+    cp.n_batch = 256; cp.n_ubatch = 256;
+    cp.n_threads = std::clamp(threads, 2, 6);
     cp.n_threads_batch = cp.n_threads;
     context = llama_init_from_model(model, cp);
     if (!context) { clear(); throw std::runtime_error("Not enough memory for the Gemma context."); }
@@ -45,7 +45,7 @@ void AtlasEngine::generate(const std::string &prompt, int limit, const std::func
     count = llama_tokenize(vocab, prompt.data(), (int)prompt.size(), tokens.data(), (int)tokens.size(), true, true);
     if (count <= 0) throw std::runtime_error("Prompt tokenization failed.");
     tokens.resize(count);
-    limit = std::clamp(limit, 32, 256);
+    limit = std::clamp(limit, 8, 256);
     if (tokens.size() + limit >= llama_n_ctx(context)) throw std::runtime_error("This message is too long for mobile voice mode. Please shorten it.");
     auto memory = llama_get_memory(context);
     size_t common = 0;

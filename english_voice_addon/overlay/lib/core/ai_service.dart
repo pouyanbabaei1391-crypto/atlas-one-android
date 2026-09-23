@@ -43,11 +43,12 @@ class AiService {
   }
 
   Future<String> checkConnection() async {
-    if (await settings.useLocalAi) {
-      await local.refresh();
-      return local.ready ? 'Gemma 3 4B is ready on this phone. No AI server is used.'
-          : 'Local Gemma is not loaded. Open Local AI setup and prepare the model.';
-    }
+    await local.refresh();
+    final cloudReady = await settings.cloudConfigured;
+    if (local.ready && !cloudReady) return 'Gemma 3 4B is ready on this phone.';
+    if (!cloudReady) return local.installed
+        ? 'Gemma is installed and will load automatically.'
+        : 'Add a Groq API key or a secure Gateway URL for Hybrid mode.';
     final base = (await settings.baseUrl).replaceAll(RegExp(r'/$'), '');
     final key = await settings.apiKey;
     final client = http.Client();
@@ -72,6 +73,7 @@ class AiService {
     String? imageBase64,
     String? memoryContext,
     bool voiceMode = false,
+    bool forceCloud = false,
     String? secondImageBase64,
     void Function(String reply)? onReply,
     Map<String, String> allowedApps = const {},
@@ -127,14 +129,17 @@ ${memoryContext == null || memoryContext.trim().isEmpty ? '' : '\nRelevant memor
       });
     }
 
-    if (await settings.useLocalAi) {
+    if (await settings.useLocalAi && !forceCloud) {
       if (imageBase64 != null) {
         throw StateError('Local voice mode processes text. Select server mode in Settings for camera or screen analysis.');
       }
-      final prompt = gemmaPrompt(system, history, userText);
+      final localSystem = voiceMode
+          ? 'You are Atlas, a fast English voice assistant. Answer the current question directly and accurately in one or two short natural sentences. Return JSON with reply first and actions empty: {"reply":"answer","actions":[]}'
+          : system;
+      final prompt = gemmaPrompt(localSystem, history, userText, fastVoice: voiceMode);
       final raw = await local.generate(prompt, (text) {
         if (requestEpoch == _requestEpoch) onReply?.call(streamedReply(text));
-      });
+      }, maxTokens: voiceMode ? 80 : 192);
       if (requestEpoch != _requestEpoch) throw StateError('Request cancelled');
       AiTurn turn;
       try { turn = _parseTurn(raw); }
@@ -167,7 +172,7 @@ ${memoryContext == null || memoryContext.trim().isEmpty ? '' : '\nRelevant memor
           'stream': streaming,
           if (jsonMode) 'response_format': {'type': 'json_object'},
         });
-      return client.send(req).timeout(Duration(seconds: voiceMode ? 8 : 20));
+      return client.send(req).timeout(Duration(milliseconds: voiceMode ? 3500 : 20000));
     }
     try {
       var streaming = onReply != null;
@@ -188,7 +193,7 @@ ${memoryContext == null || memoryContext.trim().isEmpty ? '' : '\nRelevant memor
       if (type.contains('text/event-stream')) {
         final raw = StringBuffer();
         await for (final line in response.stream
-            .timeout(const Duration(seconds: 20))
+            .timeout(Duration(seconds: voiceMode ? 8 : 20))
             .transform(utf8.decoder).transform(const LineSplitter())) {
           if (!line.startsWith('data:')) continue;
           final data = line.substring(5).trim();
@@ -209,7 +214,7 @@ ${memoryContext == null || memoryContext.trim().isEmpty ? '' : '\nRelevant memor
         onReply?.call(turn.reply);
         return turn;
       }
-      final body = await response.stream.timeout(const Duration(seconds: 20))
+      final body = await response.stream.timeout(Duration(seconds: voiceMode ? 8 : 20))
           .transform(utf8.decoder).join();
       final decoded = jsonDecode(body) as Map<String, dynamic>;
       final turn = _parseTurn(_extractContent(decoded));

@@ -90,7 +90,7 @@ class AtlasVoiceService : Service() {
                 override fun onEndOfSpeech() {
                     if (!valid()) return
                     updateStatus("Transcribing…")
-                    armWatchdog(token, 5000)
+                    armWatchdog(token, 900)
                 }
                 override fun onPartialResults(results: Bundle?) {
                     if (!valid()) return
@@ -134,9 +134,10 @@ class AtlasVoiceService : Service() {
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-US")
                 putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
                 putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
-                putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1200L)
+                putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 500L)
+                putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 350L)
             })
-            armWatchdog(token, 12000)
+            armWatchdog(token, 8000)
         } catch (e: Exception) {
             cancelListening()
             AtlasVoiceHost.event("error", mapOf("id" to id, "message" to (e.message ?: "Speech recognition failed"), "code" to -1, "retry" to false))
