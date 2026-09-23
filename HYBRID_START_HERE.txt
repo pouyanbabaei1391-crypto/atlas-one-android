@@ -1,0 +1,57 @@
+ATLAS ONE - SECURE HYBRID MODE
+==============================
+
+RESULT
+------
+The microphone can use the cloud immediately while the exact Gemma 3 4B
+Q4_K_M model is installed and loaded locally. Once Gemma is ready, following
+turns switch automatically to private on-device inference.
+
+The Groq API key is NEVER included in the APK. It exists only as a secret in
+the Cloudflare Gateway. The APK contains only the public Gateway URL.
+
+ONE-TIME GATEWAY SETUP
+----------------------
+1. Create a free Groq API key.
+2. Install Wrangler: npm install -g wrangler
+3. Open a terminal in hybrid_gateway.
+4. Run: wrangler login
+5. Run: wrangler secret put GROQ_API_KEY
+6. Run: wrangler deploy
+7. Copy the resulting https://...workers.dev URL.
+
+ONE-TIME GITHUB SETUP
+---------------------
+In the GitHub repository open:
+  Settings > Secrets and variables > Actions > New repository secret
+
+Name:
+  ATLAS_HYBRID_GATEWAY_URL
+
+Value:
+  The deployed https://...workers.dev URL (without a trailing slash)
+
+BUILD
+-----
+Use UPDATE_TO_GITHUB.bat exactly as before. In GitHub Actions select:
+  Build Atlas Android Hybrid APK
+
+Press Run workflow. Download:
+  Atlas-One-Android-HYBRID-APK
+
+BEHAVIOR
+--------
+- Local model ready: Gemma answers privately on the phone.
+- Local model not ready: Groq Llama 3.1 8B Instant answers through Gateway.
+- Local preparation runs without blocking the first cloud conversations.
+- Next turns move automatically to Gemma as soon as it becomes ready.
+- The installer build fails if no Gateway URL is configured.
+- The installer build fails if it exceeds 800,000,000 bytes.
+- Existing source files and existing GitHub workflows remain unchanged.
+
+REALISTIC LIMIT
+---------------
+Sub-second response cannot be guaranteed on every network or phone. This mode
+removes the multi-gigabyte first-run model wait from the first conversation,
+but real latency still depends on STT, network distance, cloud load, and TTS.
+
