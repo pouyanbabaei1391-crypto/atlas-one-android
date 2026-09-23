@@ -1,33 +1,23 @@
-ATLAS ONE — SLIM SERVER BUILD
+ATLAS ONE — SLIM LOCAL GEMMA BUILD
 
 This edition has one GitHub workflow: Build Atlas Android Slim APK.
-
-ONE-TIME SETUP
-1. Create a Groq API key at https://console.groq.com/keys
-2. In GitHub open Settings > Secrets and variables > Actions.
-3. Create one repository secret named GROQ_API_KEY and paste the key.
 
 BUILD
 1. Run UPDATE_TO_GITHUB.bat.
 2. Open GitHub Actions > Build Atlas Android Slim APK.
 3. Select Run workflow.
-4. Download Atlas-One-Android-Slim-Server from Artifacts.
+4. Download Atlas-One-Android-Slim-Local-Gemma from Artifacts.
 
 RUNTIME
-- Voice questions use the fast server first.
+- Voice questions use Gemma 3 4B locally on the phone.
 - An already-installed Gemma model is retained when this APK updates the same app.
-- If the server fails and Gemma is ready, Atlas falls back to the local model.
 - If Gemma is absent, the local setup can download it; the APK stays Slim.
+- No cloud model, API key, Gateway, or server URL is required.
 
 IMPORTANT
 Do not uninstall the previous app and do not clear its storage if you want to keep
 the already-downloaded 2.5 GB model.
 
-Latency below one second is a performance target, not a guarantee. Network,
-speech recognition, provider load, phone performance, and text-to-speech all
-affect end-to-end response time.
-
-SECURITY
-This one-click private/test build compiles the provider key into the APK. An APK
-can be reverse engineered, so do not distribute this build publicly. A public
-release requires a backend relay that keeps the provider key off the device.
+Local response speed depends on phone CPU/RAM, model warm-up, speech recognition,
+answer length, and text-to-speech. A 4B model cannot be guaranteed to start
+speaking in under one second on every Android device.
