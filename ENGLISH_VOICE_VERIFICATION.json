@@ -1,0 +1,36 @@
+{
+  "all_original_files_retained": true,
+  "protected_connection_and_build_files_identical": [
+    ".atlas_project_root",
+    ".atlas_repo_url",
+    ".gitignore",
+    "build.py",
+    "BUILD_ANDROID.bat",
+    "BUILD_ANDROID.ps1",
+    "PUSH_FINAL_FIXED_BUILD.bat",
+    "UPDATE_AND_BUILD_ANDROID.bat",
+    "UPDATE_TO_GITHUB.bat",
+    "UPDATE_TO_GITHUB.ps1",
+    "UPLOAD_TO_GITHUB.bat"
+  ],
+  "changed_files": [
+    "lib/core/ai_service.dart",
+    "lib/core/assistant_controller.dart",
+    "lib/core/camera_service.dart",
+    "lib/core/reply_stream.dart",
+    "lib/core/settings_service.dart",
+    "lib/core/voice_service.dart",
+    "lib/screens/home_screen.dart",
+    "lib/screens/settings_screen.dart",
+    "native/android/app/src/main/kotlin/com/atlas/one/ScreenCaptureService.kt",
+    "native/ios/Runner/Info.plist.patch.txt",
+    "pubspec.yaml"
+  ],
+  "original_versions_preserved": true,
+  "validation": "Archive and source checks only; Flutter/Dart SDK and physical-device speech testing unavailable.",
+  "existing_archive_limitations": [
+    "The supplied archive contains no .github/workflows files. None were invented or changed.",
+    "The supplied .git tree contains empty directories but no repository metadata files. The supplied updater is unchanged."
+  ],
+  "latency": "Not benchmarked. Sub-second speech is not guaranteed."
+}

@@ -1,44 +1,60 @@
-name: Build Atlas Android APK
+name: Build Atlas Android Slim APK
+
 on:
   workflow_dispatch:
-    inputs:
-      bundle_model:
-        description: Include Gemma 3 4B weights in APK (about 2.49 GB)
-        type: boolean
-        default: true
-  push:
-    branches: [main, master]
+
 permissions:
   contents: read
+
 concurrency:
-  group: atlas-android-${{ github.ref }}
+  group: atlas-slim-${{ github.ref }}
   cancel-in-progress: true
+
 jobs:
-  build-apk:
+  build-slim-apk:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 45
+    env:
+      ATLAS_BUNDLE_MODEL: "false"
+      ATLAS_SERVER_URL: "https://api.groq.com/openai/v1"
+      ATLAS_SERVER_MODEL: "llama-3.1-8b-instant"
+      ATLAS_SERVER_API_KEY: ${{ secrets.GROQ_API_KEY }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - name: Checkout Atlas
+        uses: actions/checkout@v4
+
+      - name: Require server key
+        shell: bash
+        run: |
+          test -n "$ATLAS_SERVER_API_KEY" || {
+            echo "Missing repository secret GROQ_API_KEY"
+            exit 1
+          }
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
-      - uses: subosito/flutter-action@v2
+          java-version: "17"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - name: Test and build local Gemma edition
-        env:
-          ATLAS_BUNDLE_MODEL: ${{ github.event_name != 'workflow_dispatch' || inputs.bundle_model }}
-        run: python english_voice_addon/build.py android
-      - name: Upload Android installer
+
+      - name: Build server-first Slim APK
+        shell: bash
+        run: python3 english_voice_addon/build.py android
+
+      - name: Enforce Slim installer limit
+        shell: bash
+        run: python3 english_voice_addon/verify_slim_apk.py dist/Atlas-One-Android.apk --max-bytes 800000000
+
+      - name: Upload installable APK
         uses: actions/upload-artifact@v4
         with:
-          name: Atlas-One-Android-APK
+          name: Atlas-One-Android-Slim-Server
           path: dist/Atlas-One-Android.apk
           if-no-files-found: error
-          compression-level: 0
-
+          retention-days: 14

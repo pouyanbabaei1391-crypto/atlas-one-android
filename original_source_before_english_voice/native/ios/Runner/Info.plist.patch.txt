@@ -1,0 +1,14 @@
+Add these keys to ios/Runner/Info.plist after flutter create:
+
+<key>NSCameraUsageDescription</key>
+<string>Atlas فقط با اجازه شما برای قابلیت Camera Vision به دوربین دسترسی دارد.</string>
+<key>NSMicrophoneUsageDescription</key>
+<string>Atlas فقط با اجازه شما برای مکالمه صوتی به میکروفون دسترسی دارد.</string>
+<key>NSSpeechRecognitionUsageDescription</key>
+<string>Atlas برای تبدیل گفتار فارسی شما به متن از Speech Recognition استفاده می‌کند.</string>
+<key>NSLocalNetworkUsageDescription</key>
+<string>Atlas در صورت انتخاب شما می‌تواند به مدل هوش مصنوعی روی شبکه محلی متصل شود.</string>
+<key>NSAppTransportSecurity</key>
+<dict>
+    <key>NSAllowsLocalNetworking</key><true/>
+</dict>
