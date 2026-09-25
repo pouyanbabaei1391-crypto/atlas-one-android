@@ -2,8 +2,8 @@ import '../models/chat_message.dart';
 
 String gemmaPrompt(String instructions, List<ChatMessage> history, String message,
     {bool fastVoice = false}) {
-  String clean(String text) => text.replaceAll('<start_of_turn>', '[start of turn]')
-      .replaceAll('<end_of_turn>', '[end of turn]').replaceAll('<bos>', '');
+  String clean(String text) => text.replaceAll('<|im_start|>', '[start]')
+      .replaceAll('<|im_end|>', '[end]');
   final recent = <ChatMessage>[];
   var budget = fastVoice ? 600 : 2200;
   for (final item in history.reversed) {
@@ -11,12 +11,11 @@ String gemmaPrompt(String instructions, List<ChatMessage> history, String messag
     recent.insert(0, item);
     budget -= item.content.length;
   }
-  final out = StringBuffer('<start_of_turn>user\n${clean(instructions)}\n');
-  // Gemma expects alternating user/model turns; embed compact history as context.
-  if (recent.isNotEmpty) {
-    out.writeln('Recent conversation (context only):');
-    for (final item in recent) { out.writeln('${item.role}: ${clean(item.content)}'); }
+  final out = StringBuffer('<|im_start|>system\n${clean(instructions)}\n/no_think<|im_end|>\n');
+  for (final item in recent) {
+    final role = item.role == 'assistant' ? 'assistant' : 'user';
+    out.write('<|im_start|>$role\n${clean(item.content)}<|im_end|>\n');
   }
-  out.write('\nCurrent request: ${clean(message)}<end_of_turn>\n<start_of_turn>model\n');
+  out.write('<|im_start|>user\n${clean(message)}\n/no_think<|im_end|>\n<|im_start|>assistant\n');
   return out.toString();
 }

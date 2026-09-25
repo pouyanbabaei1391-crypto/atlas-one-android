@@ -1,2 +1,2 @@
-Gemma is provided under and subject to the Gemma Terms of Use found at ai.google.dev/gemma/terms
-Quantized Gemma 3 4B IT Q4_K_M weights distributed by bartowski; see https://huggingface.co/bartowski/google_gemma-3-4b-it-GGUF
+Qwen3 is licensed under Apache License 2.0; see https://huggingface.co/Qwen/Qwen3-1.7B
+Quantized Qwen3 1.7B Q4_K_M weights distributed by Unsloth; see https://huggingface.co/unsloth/Qwen3-1.7B-GGUF

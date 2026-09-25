@@ -6,10 +6,10 @@ class SettingsService {
   static const groqFastModel = 'llama-3.1-8b-instant';
   static const legacyDefaultBaseUrl = 'http://192.168.1.10:11434/v1';
   Future<bool> get useLocalAi async =>
-      Platform.isAndroid && (await _storage.read(key: 'use_local_gemma')) != 'false';
-  Future<void> setUseLocalAi(bool value) => _storage.write(key: 'use_local_gemma', value: value.toString());
-  Future<bool> get modelTermsAccepted async => (await _storage.read(key: 'gemma_terms')) == 'accepted';
-  Future<void> acceptModelTerms() => _storage.write(key: 'gemma_terms', value: 'accepted');
+      Platform.isAndroid && (await _storage.read(key: 'use_local_qwen3')) != 'false';
+  Future<void> setUseLocalAi(bool value) => _storage.write(key: 'use_local_qwen3', value: value.toString());
+  Future<bool> get modelTermsAccepted async => (await _storage.read(key: 'qwen3_terms')) == 'accepted';
+  Future<void> acceptModelTerms() => _storage.write(key: 'qwen3_terms', value: 'accepted');
   static const _storage = FlutterSecureStorage();
 
   Future<String> get userName async =>

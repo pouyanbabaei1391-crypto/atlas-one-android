@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import '../lib/core/reply_stream.dart';
 
 void main() {
-  testWidgets('English speech starts before full JSON and actions stay silent', (tester) async {
+  testWidgets('English speech waits for a complete sentence and actions stay silent', (tester) async {
     const reply = 'Here is your answer with more detail to follow.';
     final raw = jsonEncode({'reply': reply, 'actions': [{'type': 'open_app', 'app_id': 'private-action'}]});
     final spoken = <String>[];
@@ -11,7 +11,7 @@ void main() {
     final first = raw.indexOf(' with');
     chunks.add(streamedReply(raw.substring(0, first)));
     await tester.pump(const Duration(milliseconds: 141));
-    expect(spoken, isNotEmpty);
+    expect(spoken, isEmpty);
     chunks.add(streamedReply(raw));
     chunks.finish();
     expect(spoken.join(' '), reply);

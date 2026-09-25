@@ -3,9 +3,9 @@ ATLAS ONE - SECURE HYBRID MODE
 
 RESULT
 ------
-The microphone can use the cloud immediately while the exact Gemma 3 4B
-Q4_K_M model is installed and loaded locally. Once Gemma is ready, following
-turns switch automatically to private on-device inference.
+The microphone can use the cloud while the exact Qwen3 1.7B Q4_K_M model is
+installed and loaded locally. Once Qwen3 is ready, following turns use private
+on-device inference first and keep the cloud only as a fallback.
 
 The Groq API key is NEVER included in the APK. It exists only as a secret in
 the Cloudflare Gateway. The APK contains only the public Gateway URL.
@@ -41,10 +41,10 @@ Press Run workflow. Download:
 
 BEHAVIOR
 --------
-- Local model ready: Gemma answers privately on the phone.
+- Local model ready: Qwen3 answers privately on the phone.
 - Local model not ready: Groq Llama 3.1 8B Instant answers through Gateway.
 - Local preparation runs without blocking the first cloud conversations.
-- Next turns move automatically to Gemma as soon as it becomes ready.
+- Next turns move automatically to Qwen3 as soon as it becomes ready.
 - The installer build fails if no Gateway URL is configured.
 - The installer build fails if it exceeds 800,000,000 bytes.
 - Existing source files and existing GitHub workflows remain unchanged.
@@ -54,4 +54,3 @@ REALISTIC LIMIT
 Sub-second response cannot be guaranteed on every network or phone. This mode
 removes the multi-gigabyte first-run model wait from the first conversation,
 but real latency still depends on STT, network distance, cloud load, and TTS.
-

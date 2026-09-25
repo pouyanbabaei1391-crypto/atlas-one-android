@@ -3,23 +3,23 @@ ATLAS ONE - SLIM INSTALLER (UNDER 800 MB)
 
 WHAT THIS ADD-ON DOES
 ---------------------
-It adds a second Android build route that excludes the 2,489,758,112-byte
-Gemma weight file from the APK. The existing application, model identity,
+It adds a second Android build route that excludes the 1,107,409,376-byte
+Qwen3 weight file from the APK. The existing application architecture,
 voice features, original bundled build, and Update to GitHub route are kept.
 
 The slim APK downloads the exact same model during first-time setup:
-  google_gemma-3-4b-it-Q4_K_M.gguf
-  Expected size: 2,489,758,112 bytes
-  SHA-256: 4996030242583a40aa151ff93f49ed787ac8c25e4120c3ae4588b2e2a7d1ae94
+  Qwen3-1.7B-Q4_K_M.gguf
+  Expected size: 1,107,409,376 bytes
+  SHA-256: ba491cf470c3cadc624e4c8d6c9a27c998809e8ba8eb938d1689ae87e024b6b7
 
 This preserves model quality byte-for-byte. It reduces installer size, not
 the final storage occupied by the installed model.
 
 GITHUB
 ------
-Use UPDATE_TO_GITHUB.bat exactly as before. A new workflow named
-"Build Atlas Android Slim APK" runs automatically and publishes the artifact:
-  Atlas-One-Android-SLIM-APK
+Use UPDATE_TO_GITHUB.bat exactly as before. Then open Actions and run the single
+workflow named "Build Atlas Android Slim Qwen3 APK". It publishes:
+  Atlas-One-Android-SLIM-QWEN3-APK
 
 The workflow fails instead of publishing if the APK is over 800,000,000 bytes.
 
@@ -33,7 +33,5 @@ The verified result is:
 
 WHY THIS DOES NOT USE 1-BIT QUANTIZATION
 ----------------------------------------
-A 1-bit conversion changes model weights and cannot honestly guarantee zero
-quality loss. The slim route keeps the existing Q4_K_M model unchanged and
-therefore preserves its coherence and output quality.
-
+A 1-bit conversion changes model weights and can reduce quality. This route
+uses Q4_K_M for a practical balance of mobile speed, size, and answer quality.

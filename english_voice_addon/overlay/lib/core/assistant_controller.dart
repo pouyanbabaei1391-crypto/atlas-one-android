@@ -47,7 +47,7 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> prepareLocalAi() async {
-    try { await ai.local.prepare(); status = 'Gemma 3 4B is ready on this phone'; }
+    try { await ai.local.prepare(); status = 'Qwen3 1.7B is ready on this phone'; }
     catch (e) { status = _voiceError(e); }
     notifyListeners();
   }
@@ -154,11 +154,11 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
         final accepted = await settings.modelTermsAccepted;
         if (!ai.local.ready && (ai.local.installed || accepted)) {
           status = ai.local.installed
-              ? 'Loading your existing Gemma model…'
-              : 'Preparing Gemma while Hybrid cloud stays available…';
+              ? 'Loading your existing Qwen3 model…'
+              : 'Preparing Qwen3 while Hybrid cloud stays available…';
           unawaited(ai.local.prepare().then((_) {
             if (_disposed) return;
-            status = 'Hybrid ready · fast cloud with private local fallback';
+            status = 'Qwen3 ready · private local first with cloud fallback';
             notifyListeners();
           }).catchError((Object error) {
             if (_disposed) return;
@@ -181,7 +181,7 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
         unawaited(ai.local.prepare().catchError((Object _) {}));
       }
       if (!cloudReady && !ai.local.installed) {
-        status = 'Install Gemma or add a Groq API key / secure Gateway in Settings.';
+        status = 'Install Qwen3 or add a Groq API key / secure Gateway in Settings.';
         notifyListeners();
         return;
       }
@@ -403,7 +403,10 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
         },
       );
       final cloudConfigured = await settings.cloudConfigured;
-      final cloudFirst = shouldSpeak && cloudConfigured;
+      await ai.local.refresh();
+      // Once the downloaded model is ready, every normal text/voice turn starts
+      // on-device. Cloud remains only the existing emergency fallback.
+      final cloudFirst = shouldSpeak && cloudConfigured && !ai.local.ready;
       late AiTurn turn;
       try {
         turn = await requestAnswer(forceCloud: cloudFirst);
@@ -443,7 +446,7 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
       chunks.dispose();
       await speechQueue;
       if (epoch == _turnEpoch) {
-        status = '${localAiEnabled ? 'Local Gemma' : 'AI connection'}: ${_voiceError(e)}';
+        status = '${localAiEnabled ? 'Local Qwen3' : 'AI connection'}: ${_voiceError(e)}';
         voiceWarning = status;
         if (shouldSpeak && speechEpoch == _speechEpoch) {
           try { await voice.speak(

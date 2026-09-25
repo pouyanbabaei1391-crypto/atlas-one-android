@@ -45,9 +45,9 @@ class AiService {
   Future<String> checkConnection() async {
     await local.refresh();
     final cloudReady = await settings.cloudConfigured;
-    if (local.ready && !cloudReady) return 'Gemma 3 4B is ready on this phone.';
+    if (local.ready && !cloudReady) return 'Qwen3 1.7B is ready on this phone.';
     if (!cloudReady) return local.installed
-        ? 'Gemma is installed and will load automatically.'
+        ? 'Qwen3 is installed and will load automatically.'
         : 'Add a Groq API key or a secure Gateway URL for Hybrid mode.';
     final base = (await settings.baseUrl).replaceAll(RegExp(r'/$'), '');
     final key = await settings.apiKey;
@@ -134,7 +134,7 @@ ${memoryContext == null || memoryContext.trim().isEmpty ? '' : '\nRelevant memor
         throw StateError('Local voice mode processes text. Select server mode in Settings for camera or screen analysis.');
       }
       final localSystem = voiceMode
-          ? 'You are Atlas, a fast English voice assistant. Answer the current question directly and accurately in one or two short natural sentences. Return JSON with reply first and actions empty: {"reply":"answer","actions":[]}'
+          ? 'You are Atlas, a fast English voice assistant. Answer directly and accurately in one or two complete, natural sentences. Finish every sentence with punctuation. Do not expose reasoning. Return JSON with reply first and actions empty: {"reply":"answer","actions":[]}'
           : system;
       final prompt = gemmaPrompt(localSystem, history, userText, fastVoice: voiceMode);
       final raw = await local.generate(prompt, (text) {

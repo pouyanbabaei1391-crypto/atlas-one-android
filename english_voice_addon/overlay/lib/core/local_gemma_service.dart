@@ -70,7 +70,7 @@ class LocalGemmaService extends ChangeNotifier {
   }
   Future<String> generate(String prompt, void Function(String)? onText,
       {int maxTokens = 192}) async {
-    if (!ready) throw StateError('Prepare Gemma 3 4B using Local AI setup before speaking.');
+    if (!ready) throw StateError('Prepare Qwen3 1.7B using Local AI setup before speaking.');
     if (_generating) throw StateError('The previous local answer is still stopping. Try again in a moment.');
     _generating = true;
     final id = ++_request;
@@ -90,7 +90,7 @@ class LocalGemmaService extends ChangeNotifier {
       });
       await bytes.close();
       if (id != _request) throw StateError('Generation cancelled.');
-      if (result.trim().isEmpty) throw StateError('Gemma returned no answer. Try a shorter question.');
+      if (result.trim().isEmpty) throw StateError('Qwen3 returned no answer. Try a shorter question.');
       return result;
     } finally {
       if (!bytes.isClosed) await bytes.close();

@@ -43,17 +43,20 @@ void main() {
   test('No reply field means no partial speech', () {
     expect(streamedReply(r'{"actions":[{"type":"open_uri","uri":"https://example.com"}]}'), '');
   });
-  testWidgets('Slow tokens flush complete words and finish cancels timers', (tester) async {
+  testWidgets('Slow tokens wait for a complete sentence before speech', (tester) async {
     final emitted = <String>[];
     final chunks = SpeechChunks(emitted.add);
     chunks.add('سلام دوست عزیز من');
     expect(emitted, isEmpty);
     await tester.pump(const Duration(milliseconds: 221));
-    expect(emitted, ['سلام دوست عزیز']);
+    expect(emitted, isEmpty);
     chunks.add('سلام دوست عزیز من هستم');
+    expect(emitted, isEmpty);
+    chunks.add('سلام دوست عزیز من هستم.');
+    expect(emitted, ['سلام دوست عزیز من هستم.']);
     chunks.finish();
     await tester.pump(const Duration(seconds: 1));
-    expect(emitted, ['سلام دوست عزیز', 'من هستم']);
+    expect(emitted, ['سلام دوست عزیز من هستم.']);
   });
 
   testWidgets('Cancellation suppresses delayed speech', (tester) async {

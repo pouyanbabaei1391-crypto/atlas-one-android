@@ -30,7 +30,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final c = context.watch<AssistantController>();
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Atlas Local · Gemma 3'),
+        title: const Text('Atlas Local · Qwen3'),
         actions: [
           IconButton(
             onPressed: () => Navigator.push(
@@ -132,7 +132,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 animation: LocalGemmaService.instance,
                 builder: (context, _) => ListTile(
                   leading: const Icon(Icons.memory_rounded),
-                  title: Text(c.ai.local.ready ? 'Gemma 3 4B · On this phone' : 'Prepare your local AI'),
+                  title: Text(c.ai.local.ready ? 'Qwen3 1.7B · On this phone' : 'Prepare your local AI'),
                   subtitle: Text(c.ai.local.ready ? 'No AI server required' : 'One-time model setup required'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: c.busy || c.microphoneEnabled ? null : () => Navigator.push(context,

@@ -19,9 +19,9 @@ import java.util.concurrent.atomic.AtomicBoolean
 /** Bundled GGUF installation and direct in-process JNI inference. No local HTTP server. */
 @Keep
 object LocalGemma {
-    private const val SIZE = 2489758112L
-    private const val HASH = "4996030242583a40aa151ff93f49ed787ac8c25e4120c3ae4588b2e2a7d1ae94"
-    private const val MODEL_URL = "https://huggingface.co/bartowski/google_gemma-3-4b-it-GGUF/resolve/main/google_gemma-3-4b-it-Q4_K_M.gguf?download=true"
+    private const val SIZE = 1107409376L
+    private const val HASH = "ba491cf470c3cadc624e4c8d6c9a27c998809e8ba8eb938d1689ae87e024b6b7"
+    private const val MODEL_URL = "https://huggingface.co/unsloth/Qwen3-1.7B-GGUF/resolve/cc27747d7419139e44ba97777c2f2fd5dca92ee1/Qwen3-1.7B-Q4_K_M.gguf?download=true"
     private val main = Handler(Looper.getMainLooper())
     private val worker = Executors.newSingleThreadExecutor()
     private val cancelled = AtomicBoolean(false)
@@ -34,8 +34,8 @@ object LocalGemma {
     @Volatile private var progress = 0.0
     @Volatile private var connection: HttpURLConnection? = null
     private var lastProgress = 0L
-    private fun modelFile() = File(context.filesDir, "models/gemma-3-4b-Q4_K_M.gguf")
-    private fun receipt() = File(context.filesDir, "models/gemma-3-4b.verified")
+    private fun modelFile() = File(context.filesDir, "models/qwen3-1.7b-Q4_K_M.gguf")
+    private fun receipt() = File(context.filesDir, "models/qwen3-1.7b.verified")
     private fun installed() = modelFile().length() == SIZE && receipt().takeIf { it.isFile }?.readText() == HASH
     private fun sha256(file: File): String {
         val digest = MessageDigest.getInstance("SHA-256")
@@ -74,7 +74,7 @@ object LocalGemma {
                     result.success(null)
                 }
                 "install", "load", "generate" -> {
-                    if (!working.compareAndSet(false, true)) result.error("LOCAL_BUSY", "Gemma is already working. Wait or cancel the current operation.", null)
+                    if (!working.compareAndSet(false, true)) result.error("LOCAL_BUSY", "Qwen3 is already working. Wait or cancel the current operation.", null)
                     else {
                         cancelled.set(false)
                         if (libraryLoaded) nativeResetCancel()
@@ -84,7 +84,7 @@ object LocalGemma {
                                     "install" -> install()
                                     "load" -> load()
                                     "generate" -> {
-                                        if (!ready) throw IllegalStateException("Gemma is not ready. Complete Local AI setup first.")
+                                        if (!ready) throw IllegalStateException("Qwen3 is not ready. Complete Local AI setup first.")
                                         setState("generating", 1.0)
                                         if (cancelled.get()) throw IllegalStateException("Cancelled")
                                         nativeGenerate((call.argument<String>("prompt") ?: "").toByteArray(Charsets.UTF_8), call.argument<Int>("maxTokens") ?: 192, call.argument<Int>("id") ?: 0)
@@ -93,7 +93,7 @@ object LocalGemma {
                                 }
                                 main.post { working.set(false); result.success(snapshot()) }
                             } catch (e: Throwable) {
-                                val message = if (cancelled.get()) "Operation cancelled." else e.message ?: "Local Gemma failed. Check available memory and installation."
+                                val message = if (cancelled.get()) "Operation cancelled." else e.message ?: "Local Qwen3 failed. Check available memory and installation."
                                 setState(if (ready) "ready" else if (installed()) "installed" else "not_installed", progress, message)
                                 main.post { working.set(false); result.error("LOCAL_GEMMA", message, null) }
                             }
@@ -124,18 +124,18 @@ object LocalGemma {
     private fun checkCancelled() { if (cancelled.get()) throw IllegalStateException("Cancelled") }
 
     private fun install() {
-        if (!Build.SUPPORTED_ABIS.contains("arm64-v8a")) throw IllegalStateException("This Gemma build requires a 64-bit ARM Android device.")
+        if (!Build.SUPPORTED_ABIS.contains("arm64-v8a")) throw IllegalStateException("This Qwen3 build requires a 64-bit ARM Android device.")
         if (installed() || recoverExistingModel()) { setState(if (ready) "ready" else "installed", 1.0); return }
         val target = modelFile()
         target.parentFile!!.mkdirs()
-        val temp = File(target.parentFile, "gemma-download.part")
+        val temp = File(target.parentFile, "qwen3-download.part")
         if (temp.length() > SIZE) temp.delete()
-        if (context.filesDir.usableSpace < SIZE - temp.length() + 268435456L) throw IllegalStateException("Not enough storage. Free at least 3 GB for Gemma setup, in addition to the APK.")
+        if (context.filesDir.usableSpace < SIZE - temp.length() + 268435456L) throw IllegalStateException("Not enough storage. Free at least 1.5 GB for Qwen3 setup, in addition to the APK.")
         setState("installing", temp.length().toDouble() / SIZE)
         val parts = context.assets.list("gemma")?.filter { it.endsWith(".ggufpart") }?.sorted().orEmpty()
         if (parts.isNotEmpty()) {
             // Packaged weights: install without any internet access on the phone.
-            if (context.filesDir.usableSpace + temp.length() < SIZE + 268435456L) throw IllegalStateException("Insufficient storage for bundled Gemma.")
+            if (context.filesDir.usableSpace + temp.length() < SIZE + 268435456L) throw IllegalStateException("Insufficient storage for bundled Qwen3.")
             var copied = 0L
             FileOutputStream(temp, false).use { output ->
                 val buffer = ByteArray(1024 * 1024)
@@ -193,14 +193,14 @@ object LocalGemma {
 
     private fun load() {
         if (ready) return
-        if (!installed()) throw IllegalStateException("Install Gemma 3 4B before starting voice chat.")
+        if (!installed()) throw IllegalStateException("Install Qwen3 1.7B before starting voice chat.")
         setState("loading", 1.0)
         if (!libraryLoaded) { System.loadLibrary("atlas_gemma"); libraryLoaded = true }
         checkCancelled()
         nativeLoad(modelFile().absolutePath.toByteArray(Charsets.UTF_8), Runtime.getRuntime().availableProcessors().coerceIn(2, 6))
         checkCancelled()
         // Populate model pages before enabling the microphone. Warm-up is part of setup.
-        nativeGenerate("<start_of_turn>user\nOK?<end_of_turn>\n<start_of_turn>model\n".toByteArray(Charsets.UTF_8), 8, -1)
+        nativeGenerate("<|im_start|>system\nYou are Atlas. /no_think<|im_end|>\n<|im_start|>user\nReply OK. /no_think<|im_end|>\n<|im_start|>assistant\n".toByteArray(Charsets.UTF_8), 8, -1)
         checkCancelled()
         ready = true
         setState("ready", 1.0)

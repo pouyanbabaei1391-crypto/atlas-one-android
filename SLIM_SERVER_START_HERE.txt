@@ -1,23 +1,23 @@
-ATLAS ONE — SLIM LOCAL GEMMA BUILD
+ATLAS ONE — SLIM LOCAL QWEN3 BUILD
 
-This edition has one GitHub workflow: Build Atlas Android Slim APK.
+This edition has one GitHub workflow: Build Atlas Android Slim Qwen3 APK.
 
 BUILD
 1. Run UPDATE_TO_GITHUB.bat.
-2. Open GitHub Actions > Build Atlas Android Slim APK.
+2. Open GitHub Actions > Build Atlas Android Slim Qwen3 APK.
 3. Select Run workflow.
-4. Download Atlas-One-Android-Slim-Local-Gemma from Artifacts.
+4. Download Atlas-One-Android-SLIM-QWEN3-APK from Artifacts.
 
 RUNTIME
-- Voice questions use Gemma 3 4B locally on the phone.
-- An already-installed Gemma model is retained when this APK updates the same app.
-- If Gemma is absent, the local setup can download it; the APK stays Slim.
+- Voice questions use Qwen3 1.7B Q4_K_M locally on the phone.
+- An already-installed verified Qwen3 model is retained when this APK updates the same app.
+- If Qwen3 is absent, the local setup downloads it with resume and SHA-256 verification; the APK stays Slim.
 - No cloud model, API key, Gateway, or server URL is required.
 
 IMPORTANT
 Do not uninstall the previous app and do not clear its storage if you want to keep
-the already-downloaded 2.5 GB model.
+the already-downloaded 1.11 GB model.
 
 Local response speed depends on phone CPU/RAM, model warm-up, speech recognition,
-answer length, and text-to-speech. A 4B model cannot be guaranteed to start
+answer length, and text-to-speech. A local model cannot be guaranteed to start
 speaking in under one second on every Android device.

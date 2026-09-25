@@ -53,8 +53,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           if (Platform.isAndroid) ...[
             SwitchListTile(
-              title: const Text('Hybrid: Cloud speed + local Gemma'),
-              subtitle: const Text('Cloud answers voice turns first when configured; Gemma remains the private automatic fallback.'),
+              title: const Text('Local Qwen3 + cloud fallback'),
+              subtitle: const Text('Downloaded Qwen3 answers first on this phone; cloud is used only if the local engine is not ready or fails.'),
               value: c.localAiEnabled,
               onChanged: c.busy || c.microphoneEnabled || c.voiceStarting ? null : c.setLocalAiEnabled,
             ),

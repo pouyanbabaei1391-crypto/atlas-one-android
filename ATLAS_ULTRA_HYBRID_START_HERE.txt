@@ -3,11 +3,10 @@ ATLAS ONE - ULTRA HYBRID VOICE
 
 WHAT IS FIXED
 -------------
-- Voice requests prefer the configured fast Cloud route.
-- If Cloud is delayed or unavailable before any reply arrives, ready local
-  Gemma answers silently; Atlas no longer speaks a generic server error when
-  a healthy local route exists.
-- The existing 2.49 GB model is detected, verified when necessary, loaded,
+- Once downloaded and ready, voice requests prefer local Qwen3 on the phone.
+- If the local engine fails before any reply arrives, the configured Cloud
+  route remains available as the existing automatic fallback.
+- The existing verified Qwen3 1.7B Q4_K_M model is detected, loaded,
   and reused. It is not downloaded again after a normal APK update.
 - If the model is absent and its terms were accepted, resumable setup starts.
 - English end-of-speech detection, response streaming, first speech chunk,
@@ -16,7 +15,7 @@ WHAT IS FIXED
 FASTEST SETUP ON THE PHONE
 --------------------------
 1. Open Atlas Settings.
-2. Keep "Hybrid: Cloud speed + local Gemma" enabled.
+2. Keep "Local Qwen3 + cloud fallback" enabled.
 3. For direct Groq development use:
      AI server URL: https://api.groq.com/openai/v1
      Chat model: llama-3.1-8b-instant
@@ -41,4 +40,3 @@ LATENCY
 This build removes avoidable multi-second waits and targets sub-second first
 audio on a healthy nearby Cloud route. No mobile app can guarantee a fixed
 sub-second result on every network, phone, speech provider, or server load.
-

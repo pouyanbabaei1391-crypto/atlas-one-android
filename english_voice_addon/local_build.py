@@ -6,9 +6,9 @@ import os
 import shutil
 import urllib.request
 
-MODEL_URL = 'https://huggingface.co/bartowski/google_gemma-3-4b-it-GGUF/resolve/main/google_gemma-3-4b-it-Q4_K_M.gguf?download=true'
-MODEL_SIZE = 2489758112
-MODEL_SHA256 = '4996030242583a40aa151ff93f49ed787ac8c25e4120c3ae4588b2e2a7d1ae94'
+MODEL_URL = 'https://huggingface.co/unsloth/Qwen3-1.7B-GGUF/resolve/cc27747d7419139e44ba97777c2f2fd5dca92ee1/Qwen3-1.7B-Q4_K_M.gguf?download=true'
+MODEL_SIZE = 1107409376
+MODEL_SHA256 = 'ba491cf470c3cadc624e4c8d6c9a27c998809e8ba8eb938d1689ae87e024b6b7'
 PART_SIZE = 128 * 1024 * 1024
 
 def bundle_model(destination: Path):
@@ -34,9 +34,9 @@ def bundle_model(destination: Path):
                 if copied > MODEL_SIZE:
                     raise RuntimeError('Downloaded model exceeds expected size')
                 if copied % PART_SIZE == 0:
-                    print(f'Bundling Gemma: {copied / MODEL_SIZE:.0%}', flush=True)
+                    print(f'Bundling Qwen3: {copied / MODEL_SIZE:.0%}', flush=True)
         if copied != MODEL_SIZE or digest.hexdigest() != MODEL_SHA256:
-            raise RuntimeError('Gemma size/SHA-256 check failed; refusing to build')
+            raise RuntimeError('Qwen3 size/SHA-256 check failed; refusing to build')
     except BaseException:
         if part:
             part.close()
@@ -61,6 +61,6 @@ def link_or_copy(source, destination):
 def configure(work: Path):
     path = work / 'android/app/build.gradle.kts'
     if not path.exists():
-        raise RuntimeError('Local Gemma build expects current Flutter Kotlin Gradle templates.')
+        raise RuntimeError('Local Qwen3 build expects current Flutter Kotlin Gradle templates.')
     with path.open('a', encoding='utf-8') as output:
         output.write('\nandroid {\n    defaultConfig {\n        minSdk = 28\n        ndk { abiFilters.clear(); abiFilters.add("arm64-v8a") }\n        externalNativeBuild {\n            cmake { arguments.add("-DANDROID_STL=c++_shared") }\n        }\n    }\n    externalNativeBuild {\n        cmake {\n            path = file("src/main/cpp/CMakeLists.txt")\n            version = "3.22.1"\n        }\n    }\n    androidResources { noCompress.add("ggufpart") }\n}\n')
