@@ -1,0 +1,5 @@
+Atlas One uses the official Ultralytics YOLO Flutter integration for on-device object detection.
+The integration and Ultralytics YOLO models are offered under AGPL-3.0 or an Ultralytics Enterprise License.
+Open-source license: https://github.com/ultralytics/yolo-flutter-app/blob/main/LICENSE
+Commercial deployment information: https://www.ultralytics.com/license
+The selected official model is YOLO26x Detect. It is downloaded from the plugin's pinned official release and cached in private app storage on first Camera activation.

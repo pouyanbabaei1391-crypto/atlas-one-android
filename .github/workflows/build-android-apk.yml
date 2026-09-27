@@ -1,4 +1,4 @@
-name: Build Atlas Android Slim Qwen3 APK
+name: Build Atlas Android Autonomous APK
 
 on:
   workflow_dispatch:
@@ -7,11 +7,11 @@ permissions:
   contents: read
 
 concurrency:
-  group: atlas-android-slim-${{ github.ref }}
+  group: atlas-android-autonomous-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build-slim-apk:
+  build-apk:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -30,7 +30,7 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Test and build Slim local Qwen3 edition
+      - name: Analyze, test, and build Slim autonomous edition
         env:
           ATLAS_BUNDLE_MODEL: 'false'
         run: python3 english_voice_addon/build.py android
@@ -38,10 +38,10 @@ jobs:
       - name: Enforce Slim installer ceiling
         run: python3 english_voice_addon/verify_slim_apk.py dist/Atlas-One-Android.apk --max-bytes 800000000
 
-      - name: Upload verified Slim APK
+      - name: Upload verified APK
         uses: actions/upload-artifact@v5
         with:
-          name: Atlas-One-Android-SLIM-QWEN3-APK
+          name: Atlas-One-Android-AUTONOMOUS-MEMORY-CAMERA-APK
           path: dist/Atlas-One-Android.apk
           if-no-files-found: error
           compression-level: 0

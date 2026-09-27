@@ -1,0 +1,25 @@
+{
+  "artifact_scope": "additive autonomous prompt, selective encrypted memory, on-device camera intelligence",
+  "original_files_removed": 0,
+  "checks": {
+    "dart_3_13_4_parser": "passed for overlay lib and tests",
+    "pure_dart_prompt_and_memory_router_assertions": "passed",
+    "python_build_scripts_compile": "passed",
+    "additive_build_stage_generation": "passed",
+    "native_llama_cpp_core_compile": "passed against pinned c350a40bbd0ba0658793f0fc74a8b3b3ab65135e",
+    "workflow_yaml_parse": "passed",
+    "original_file_presence": "passed",
+    "official_yolo26x_release_probe": {
+      "status": "HTTP 206 range response",
+      "asset": "yolo26x_w8a32.tflite",
+      "bytes": 56921540
+    }
+  },
+  "not_executed_here": [
+    "flutter pub dependency resolution",
+    "flutter analyze with resolved Flutter packages",
+    "flutter widget tests",
+    "Android Gradle release APK build",
+    "physical Android camera, GPU delegate, STT, LLM and TTS end-to-end test"
+  ]
+}

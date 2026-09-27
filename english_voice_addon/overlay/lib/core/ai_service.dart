@@ -8,6 +8,7 @@ import 'settings_service.dart';
 import 'reply_stream.dart';
 import 'local_gemma_service.dart';
 import 'gemma_prompt.dart';
+import 'atlas_prompt_policy.dart';
 
 class AiAction {
   final String type;
@@ -72,8 +73,10 @@ class AiService {
     required String userText,
     String? imageBase64,
     String? memoryContext,
+    String? visualContext,
     bool voiceMode = false,
     bool forceCloud = false,
+    bool requiresVisualModel = false,
     String? secondImageBase64,
     void Function(String reply)? onReply,
     Map<String, String> allowedApps = const {},
@@ -106,13 +109,23 @@ Return valid JSON. Write the reply field FIRST so speech can start immediately:
 When needed, actions may contain {"type":"open_app","app_id":"..."} or {"type":"open_uri","uri":"..."}.
 ${memoryContext == null || memoryContext.trim().isEmpty ? '' : '\nRelevant memory:\n$memoryContext'}
 ''';
+    final policy = AtlasPromptPolicy.build(
+      voiceMode: voiceMode,
+      hasMemory: memoryContext != null && memoryContext.trim().isNotEmpty,
+      hasVision: visualContext != null && visualContext.trim().isNotEmpty,
+    );
+    final advancedSystem = '''$system
+$policy
+${visualContext == null || visualContext.trim().isEmpty ? '' : 'TRUSTED ON-DEVICE CAMERA OBSERVATIONS:\n$visualContext'}
+''';
 
     final messages = <Map<String, dynamic>>[
-      {'role': 'system', 'content': system},
+      {'role': 'system', 'content': advancedSystem},
       ...history.skip(history.length > 24 ? history.length - 24 : 0).map((m) => {'role': m.role, 'content': m.content}),
     ];
 
-    if (imageBase64 == null) {
+    if (imageBase64 == null ||
+        (visualContext != null && visualContext.trim().isNotEmpty && !requiresVisualModel)) {
       messages.add({'role': 'user', 'content': userText});
     } else {
       messages.add({
@@ -130,16 +143,22 @@ ${memoryContext == null || memoryContext.trim().isEmpty ? '' : '\nRelevant memor
     }
 
     if (await settings.useLocalAi && !forceCloud) {
-      if (imageBase64 != null) {
-        throw StateError('Local voice mode processes text. Select server mode in Settings for camera or screen analysis.');
+      if (imageBase64 != null && requiresVisualModel) {
+        throw StateError('Local Qwen uses trusted YOLO camera data, but raw screen images require the configured vision server.');
       }
-      final localSystem = voiceMode
-          ? 'You are Atlas, a fast English voice assistant. Answer directly and accurately in one or two complete, natural sentences. Finish every sentence with punctuation. Do not expose reasoning. Return JSON with reply first and actions empty: {"reply":"answer","actions":[]}'
+      final localSystemBase = voiceMode
+          ? '''$system
+Answer directly in one or two complete natural sentences, then include only safe supported actions needed for the next verified step. Finish every sentence with punctuation and do not expose reasoning.'''
           : system;
+      final localSystem = '''$localSystemBase
+$policy
+${memoryContext == null || memoryContext.trim().isEmpty ? '' : 'RELEVANT ENCRYPTED MEMORY:\n$memoryContext'}
+${visualContext == null || visualContext.trim().isEmpty ? '' : 'TRUSTED ON-DEVICE CAMERA OBSERVATIONS:\n$visualContext'}
+''';
       final prompt = gemmaPrompt(localSystem, history, userText, fastVoice: voiceMode);
       final raw = await local.generate(prompt, (text) {
         if (requestEpoch == _requestEpoch) onReply?.call(streamedReply(text));
-      }, maxTokens: voiceMode ? 80 : 192);
+      }, maxTokens: voiceMode ? 128 : 192);
       if (requestEpoch != _requestEpoch) throw StateError('Request cancelled');
       AiTurn turn;
       try { turn = _parseTurn(raw); }

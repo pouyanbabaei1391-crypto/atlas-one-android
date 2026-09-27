@@ -1,0 +1,32 @@
+{
+  "feature": "ATCS - Adaptive Thermal Control System",
+  "integration": "additive_disposable_build_stage",
+  "original_archive_files": 136,
+  "original_files_missing": 0,
+  "original_lines_edited_or_removed": 0,
+  "existing_file_with_additive_suffix": "english_voice_addon/local_build.py",
+  "new_source_files": 6,
+  "thermal_inputs": [
+    "Android thermal severity",
+    "battery temperature",
+    "thermal headroom",
+    "temperature trend",
+    "power-save state",
+    "charging state"
+  ],
+  "vision_intervals_seconds": {
+    "cool": 3,
+    "normal": 3,
+    "warm": 5,
+    "hot": 9,
+    "critical": 18,
+    "emergency": 30
+  },
+  "emergency_behavior": "silent_background_yolo_inference_suspended",
+  "privacy": "thermal telemetry remains on device",
+  "existing_workflow_preserved": true,
+  "prepare_only_integration_test": "passed",
+  "python_syntax_test": "passed",
+  "dart_parser_format_test": "passed",
+  "full_flutter_apk_test": "deferred_to_existing_workflow"
+}

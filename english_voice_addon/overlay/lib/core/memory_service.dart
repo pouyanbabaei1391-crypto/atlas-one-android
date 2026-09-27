@@ -98,6 +98,37 @@ class MemoryService {
     return hits.take(limit).toList();
   }
 
+  /// Searches the complete encrypted history only when the controller has
+  /// determined that the current request actually depends on memory.
+  Future<List<MemoryHit>> relevantText(String query, {int limit = 8}) async {
+    final queryTokens = _tokens(query);
+    if (queryTokens.isEmpty) return const [];
+    final rows = await _db!.query('messages', orderBy: 'created_at DESC');
+    final now = DateTime.now();
+    final hits = <MemoryHit>[];
+    for (var index = 0; index < rows.length; index++) {
+      final message = await _decode(rows[index]);
+      final content = message.content.toLowerCase();
+      final messageTokens = _tokens(content);
+      final overlap = queryTokens.intersection(messageTokens).length;
+      final coverage = overlap / queryTokens.length;
+      final exactBonus = content.contains(query.toLowerCase().trim()) ? 0.8 : 0.0;
+      final userBonus = message.role == 'user' ? 0.12 : 0.0;
+      final ageDays = now.difference(message.createdAt).inHours / 24.0;
+      final recency = 0.2 / (1.0 + ageDays / 30.0);
+      final conversational = index < 12 ? 0.12 : 0.0;
+      final score = coverage * 1.8 + exactBonus + userBonus + recency + conversational;
+      if (overlap > 0 || index < 12) hits.add(MemoryHit(message, score));
+    }
+    hits.sort((a, b) => b.score.compareTo(a.score));
+    return hits.take(limit).toList(growable: false);
+  }
+
+  Future<int> count() async {
+    final rows = await _db!.rawQuery('SELECT COUNT(*) AS total FROM messages');
+    return (rows.first['total'] as int?) ?? 0;
+  }
+
   Future<void> wipe() async {
     await _db?.delete('messages');
   }
@@ -131,5 +162,17 @@ class MemoryService {
     }
     if (aa == 0 || bb == 0) return 0;
     return dot / (sqrt(aa) * sqrt(bb));
+  }
+
+  Set<String> _tokens(String text) {
+    const stop = {
+      'the', 'a', 'an', 'and', 'or', 'to', 'of', 'in', 'on', 'for', 'is',
+      'are', 'was', 'were', 'be', 'been', 'it', 'this', 'that', 'i', 'you',
+      'we', 'my', 'your', 'our', 'me', 'do', 'did', 'what', 'when', 'where',
+    };
+    return text.toLowerCase()
+        .split(RegExp(r'[^\p{L}\p{N}]+', unicode: true))
+        .where((token) => token.length > 1 && !stop.contains(token))
+        .toSet();
   }
 }
