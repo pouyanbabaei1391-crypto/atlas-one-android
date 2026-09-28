@@ -45,6 +45,10 @@ class MainActivity : FlutterActivity() {
                     result.success(null)
                 }
                 "observeUi" -> result.success(AtlasAccessibilityService.instance?.observe() ?: "")
+                "observeUiStructured" -> result.success(AtlasAccessibilityService.instance?.observeStructured() ?: "{\"nodes\":[]}")
+                "clickViewId" -> result.success(AtlasAccessibilityService.instance?.clickViewId(call.argument<String>("viewId") ?: "") ?: false)
+                "focusText" -> result.success(AtlasAccessibilityService.instance?.focusText(call.argument<String>("text") ?: "") ?: false)
+                "setFirstEditableText" -> result.success(AtlasAccessibilityService.instance?.setTextInFirstEditable(call.argument<String>("text") ?: "") ?: false)
                 "clickText" -> result.success(AtlasAccessibilityService.instance?.clickText(call.argument<String>("text") ?: "") ?: false)
                 "setFocusedText" -> result.success(AtlasAccessibilityService.instance?.setFocusedText(call.argument<String>("text") ?: "") ?: false)
                 "scrollUi" -> result.success(AtlasAccessibilityService.instance?.scroll(call.argument<Int>("direction") ?: 1) ?: false)

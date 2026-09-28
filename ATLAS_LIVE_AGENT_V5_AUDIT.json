@@ -1,0 +1,12 @@
+{
+  "protected_files_unchanged": true,
+  "protected": {
+    ".github/workflows/build-android-apk.yml": "4636b4e55bd206dc79eff54766da4135b71d72c591edca663459c044651e252b",
+    "UPDATE_TO_GITHUB.bat": "16805b6436c9ca83bf7513fb37ab30642610face0946da3629c9083d21c81c2d",
+    "UPDATE_TO_GITHUB.ps1": "68e3a80c22336f5f9f9b5af4280af00ef2813248e35db36d589ef389d7afa2e0",
+    "UPLOAD_TO_GITHUB.bat": "dcd647fc1abab8891c3aa77b30b790ec2c191c5073b02a483710fc2845fd222b",
+    ".atlas_repo_url": "e66a59166bc310192bf1b96b113c8a60298df24ccd51877b26db2d230fd2f158",
+    "BUILD_LOCAL_GEMMA_SLIM_ANDROID.bat": "b02fecd31cba2963c2585cdac2b8e69e6d855c1e81b4ef85a712ae83bb2d4be8"
+  },
+  "modules": {}
+}

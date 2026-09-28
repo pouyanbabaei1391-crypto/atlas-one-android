@@ -17,6 +17,10 @@ class NativeBridge {
   Future<bool> accessibilityEnabled() async => (await _channel.invokeMethod<bool>('accessibilityEnabled')) ?? false;
   Future<void> openAccessibilitySettings() => _channel.invokeMethod('openAccessibilitySettings');
   Future<String> observeUi() async => (await _channel.invokeMethod<String>('observeUi')) ?? '';
+  Future<String> observeUiStructured() async => (await _channel.invokeMethod<String>('observeUiStructured')) ?? '{\"nodes\":[]}';
+  Future<bool> clickViewId(String id) async => (await _channel.invokeMethod<bool>('clickViewId', {'viewId': id})) ?? false;
+  Future<bool> focusText(String text) async => (await _channel.invokeMethod<bool>('focusText', {'text': text})) ?? false;
+  Future<bool> setFirstEditableText(String text) async => (await _channel.invokeMethod<bool>('setFirstEditableText', {'text': text})) ?? false;
   Future<bool> clickText(String text) async => (await _channel.invokeMethod<bool>('clickText', {'text': text})) ?? false;
   Future<bool> setFocusedText(String text) async => (await _channel.invokeMethod<bool>('setFocusedText', {'text': text})) ?? false;
   Future<bool> scrollUi(int direction) async => (await _channel.invokeMethod<bool>('scrollUi', {'direction': direction})) ?? false;
