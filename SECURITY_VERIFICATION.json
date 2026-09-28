@@ -1,0 +1,38 @@
+{
+  "project": "Atlas One additive release security hardening",
+  "date_utc": "2026-09-28",
+  "input_zip_sha256": "90ea272584e8b2e018df0f6b985174de9b3055338818f4c2520e4c93e29d9bad",
+  "preservation": {
+    "original_files_hashed": 141,
+    "original_files_changed": 0,
+    "original_files_deleted": 0,
+    "method": "Security files are additive; protected changes apply only to the disposable build stage."
+  },
+  "validated": [
+    "Python security scripts compile",
+    "Original English voice build stage prepares successfully",
+    "Secure stage integration completes with guarded anchors",
+    "Cleartext traffic disabled in staged Android manifest",
+    "Android cloud backup and device transfer excluded for private app data",
+    "System certificate trust only; user-installed CA certificates are not trusted by default",
+    "Startup initialization has a safe recovery path",
+    "GitHub workflow YAML parses with push and manual triggers",
+    "Workflow requires a private fixed release key and never falls back to debug signing",
+    "Workflow verifies APK signature and rejects debuggable APKs",
+    "APK/AAB checksum generation is wired",
+    "Google Play AAB output is wired"
+  ],
+  "deferred_to_github_actions": [
+    "flutter analyze",
+    "flutter test",
+    "native C++ compilation",
+    "signed release APK compilation",
+    "signed AAB compilation",
+    "apksigner verification",
+    "aapt release-policy verification"
+  ],
+  "reason_deferred": "Flutter and Android build tools are not installed in the editing runtime. The workflow runs these checks and uploads artifacts only after success.",
+  "device_testing_required": true,
+  "play_protect_note": "A correctly signed sideloaded APK may still show an unknown-developer warning. Public installation without that sideload warning requires distribution through Google Play and Play App Signing.",
+  "absolute_zero_error_guarantee": false
+}

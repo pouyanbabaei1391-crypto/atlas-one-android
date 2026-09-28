@@ -1,21 +1,28 @@
-name: Build Atlas Android Autonomous APK
+name: Build Signed Atlas Android Release
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
 
 permissions:
   contents: read
 
 concurrency:
-  group: atlas-android-autonomous-${{ github.ref }}
+  group: atlas-secure-android-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build-apk:
+  build-signed-release:
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    env:
+      ATLAS_BUNDLE_MODEL: 'false'
+      ATLAS_KEY_ALIAS: ${{ secrets.ATLAS_KEY_ALIAS }}
+      ATLAS_STORE_PASSWORD: ${{ secrets.ATLAS_STORE_PASSWORD }}
+      ATLAS_KEY_PASSWORD: ${{ secrets.ATLAS_KEY_PASSWORD }}
     steps:
-      - name: Check out source
+      - name: Check out exact source
         uses: actions/checkout@v5
 
       - name: Set up Java 17
@@ -30,18 +37,34 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Analyze, test, and build Slim autonomous edition
+      - name: Restore private release keystore
         env:
-          ATLAS_BUNDLE_MODEL: 'false'
-        run: python3 english_voice_addon/build.py android
+          KEYSTORE_BASE64: ${{ secrets.ATLAS_RELEASE_KEYSTORE_BASE64 }}
+        run: |
+          test -n "$KEYSTORE_BASE64" || { echo 'Missing ATLAS_RELEASE_KEYSTORE_BASE64 secret'; exit 1; }
+          test -n "$ATLAS_KEY_ALIAS" || { echo 'Missing ATLAS_KEY_ALIAS secret'; exit 1; }
+          test -n "$ATLAS_STORE_PASSWORD" || { echo 'Missing ATLAS_STORE_PASSWORD secret'; exit 1; }
+          test -n "$ATLAS_KEY_PASSWORD" || { echo 'Missing ATLAS_KEY_PASSWORD secret'; exit 1; }
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/atlas-release.jks"
+          test -s "$RUNNER_TEMP/atlas-release.jks"
+          echo "ATLAS_KEYSTORE_PATH=$RUNNER_TEMP/atlas-release.jks" >> "$GITHUB_ENV"
 
-      - name: Enforce Slim installer ceiling
-        run: python3 english_voice_addon/verify_slim_apk.py dist/Atlas-One-Android.apk --max-bytes 800000000
+      - name: Analyze test and build signed APK plus Play bundle
+        run: python3 SECURE_BUILD.py android
 
-      - name: Upload verified APK
+      - name: Verify APK signature and release policy
+        run: |
+          "$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)/apksigner" verify --verbose --print-certs dist/Atlas-One-Secure-Release.apk
+          python3 security_addon/verify_release.py dist/Atlas-One-Secure-Release.apk
+
+      - name: Upload verified release files
         uses: actions/upload-artifact@v5
         with:
-          name: Atlas-One-Android-AUTONOMOUS-MEMORY-CAMERA-APK
-          path: dist/Atlas-One-Android.apk
+          name: Atlas-One-Signed-Release
+          path: |
+            dist/Atlas-One-Secure-Release.apk
+            dist/Atlas-One-Google-Play.aab
+            dist/SHA256SUMS.txt
           if-no-files-found: error
           compression-level: 0
+

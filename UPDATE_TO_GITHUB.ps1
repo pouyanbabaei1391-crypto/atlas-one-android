@@ -15,6 +15,33 @@ function Find-Git {
     throw 'Git was not found. Install Git for Windows first.'
 }
 
+function Normalize-GitHubRepoUrl([string]$Value) {
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+        throw 'GitHub repository URL is required.'
+    }
+
+    # Accept a plain URL, a copied Markdown link, surrounding brackets, a
+    # trailing slash, or an accidentally repeated https:// prefix.
+    $clean = $Value.Replace([char]0x00A0, ' ').Trim()
+    $match = [regex]::Match(
+        $clean,
+        'https://github\.com/[^/\s\]\)]+/[^/\s\]\)]+(?:\.git)?',
+        [System.Text.RegularExpressions.RegexOptions]::IgnoreCase
+    )
+    if (-not $match.Success) {
+        throw 'Use a GitHub HTTPS URL such as https://github.com/USER/REPOSITORY'
+    }
+    $clean = $match.Value.TrimEnd([char[]]"/)],; `t`r`n")
+    $clean = $clean -replace '\.git.*$', '.git'
+    if (-not $clean.EndsWith('.git', [StringComparison]::OrdinalIgnoreCase)) {
+        $clean = "$clean.git"
+    }
+    if ($clean -notmatch '^https://github\.com/[^/]+/[^/]+\.git$') {
+        throw 'The GitHub repository URL is not valid.'
+    }
+    return $clean
+}
+
 if (-not (Test-Path '.atlas_project_root')) {
     throw 'This script must stay inside the Atlas project folder.'
 }
@@ -31,21 +58,24 @@ Write-Host "Git: $git" -ForegroundColor Green
 $repoFile = Join-Path $PSScriptRoot '.atlas_repo_url'
 $repo = ''
 if (Test-Path $repoFile) {
-    $repo = (Get-Content $repoFile -Raw).Trim()
+    $savedRepo = (Get-Content $repoFile -Raw).Trim()
+    try {
+        $repo = Normalize-GitHubRepoUrl $savedRepo
+    } catch {
+        Write-Warning 'The previously saved GitHub URL was invalid and will be requested again.'
+        $repo = ''
+    }
 }
 
 if ([string]::IsNullOrWhiteSpace($repo)) {
     $repo = Read-Host 'Paste your GitHub repository URL (example: https://github.com/USER/atlas-one-android.git)'
 }
-if ([string]::IsNullOrWhiteSpace($repo)) { throw 'GitHub repository URL is required.' }
+$repo = Normalize-GitHubRepoUrl $repo
 if ($repo -match '/USERNAME/' -or $repo -match 'YOUR_.*USERNAME') {
     throw 'Replace USERNAME with your real GitHub username.'
 }
-if ($repo -notmatch '^https://github\.com/[^/]+/[^/]+(?:\.git)?$') {
-    Write-Warning 'The URL does not look like a normal GitHub repository URL. Continuing anyway.'
-}
-if (-not $repo.EndsWith('.git')) { $repo = "$repo.git" }
 Set-Content -Path $repoFile -Value $repo -NoNewline
+Write-Host "Repository: $repo" -ForegroundColor Green
 
 $publish = Join-Path $env:TEMP 'atlas_one_github_publish'
 if (Test-Path $publish) { Remove-Item $publish -Recurse -Force }
