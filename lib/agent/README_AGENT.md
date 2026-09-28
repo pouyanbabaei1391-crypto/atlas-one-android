@@ -1,0 +1,2 @@
+# Atlas Tool Agent V4
+Visible Android automation using AccessibilityService. Google/Chrome is research, My Files/Files is file inspection, Notes/Keep is writing. The agent observes UI after transitions, uses text/accessibility semantics rather than fixed coordinates, stops on failed steps, and blocks secret/destructive automation. Android accessibility must be explicitly enabled by the user; app targets must be explicitly allowed in Atlas.

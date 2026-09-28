@@ -50,6 +50,8 @@ class MainActivity : FlutterActivity() {
                 "scrollUi" -> result.success(AtlasAccessibilityService.instance?.scroll(call.argument<Int>("direction") ?: 1) ?: false)
                 "globalBack" -> result.success(AtlasAccessibilityService.instance?.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK) ?: false)
                 "globalHome" -> result.success(AtlasAccessibilityService.instance?.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_HOME) ?: false)
+                "pressEnter" -> result.success(AtlasAccessibilityService.instance?.pressEnter() ?: false)
+                "pressTab" -> result.success(AtlasAccessibilityService.instance?.pressTab() ?: false)
                 "revokeSensitivePermissions" -> {
                     revokeSensitivePermissions()
                     result.success(null)

@@ -22,6 +22,8 @@ class NativeBridge {
   Future<bool> scrollUi(int direction) async => (await _channel.invokeMethod<bool>('scrollUi', {'direction': direction})) ?? false;
   Future<bool> globalBack() async => (await _channel.invokeMethod<bool>('globalBack')) ?? false;
   Future<bool> globalHome() async => (await _channel.invokeMethod<bool>('globalHome')) ?? false;
+  Future<bool> pressEnter() async => (await _channel.invokeMethod<bool>('pressEnter')) ?? false;
+  Future<bool> pressTab() async => (await _channel.invokeMethod<bool>('pressTab')) ?? false;
 
   Future<void> revokeSensitivePermissions() => _channel.invokeMethod('revokeSensitivePermissions');
 }

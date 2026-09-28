@@ -29,6 +29,8 @@ class AppActionService {
   Future<bool> scroll(int direction) => bridge.scrollUi(direction);
   Future<bool> back() => bridge.globalBack();
   Future<bool> home() => bridge.globalHome();
+  Future<bool> pressEnter() => bridge.pressEnter();
+  Future<bool> pressTab() => bridge.pressTab();
 
   void disable() {
     enabled = false;

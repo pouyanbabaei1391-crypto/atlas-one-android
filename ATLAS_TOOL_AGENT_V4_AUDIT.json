@@ -1,0 +1,77 @@
+{
+  "version": "V4",
+  "agent_files": [
+    {
+      "path": "lib/agent/action_verifier.dart",
+      "bytes": 343,
+      "sha256": "ea89489d8cc1dd8dba69f04928ef31d7cecda51413fd73a3074a162f14d593ee"
+    },
+    {
+      "path": "lib/agent/recovery_engine.dart",
+      "bytes": 399,
+      "sha256": "2d1ad0e83c0d5af4b52ce4cb3f09cb639cd5df61f79697e3d472072dadea9919"
+    },
+    {
+      "path": "lib/agent/task_planner.dart",
+      "bytes": 783,
+      "sha256": "3649e6b4f458fff46e5c7ce13828bd44f5032882fd96c03134f72f274396d532"
+    },
+    {
+      "path": "lib/agent/ui_observer.dart",
+      "bytes": 562,
+      "sha256": "1bc7b9a9c51ab4cbc23c3d33dbd48b7c8b07b0cdccb5d623d0c9edb8326e3c2e"
+    },
+    {
+      "path": "lib/agent/execution_engine.dart",
+      "bytes": 1690,
+      "sha256": "c9aad552200fffe64efe040c03d8c5dc580fdd19910181e50a1d169e723181d5"
+    },
+    {
+      "path": "lib/agent/tool_router.dart",
+      "bytes": 554,
+      "sha256": "a5078e096a6b7d3d4fbfd437aaeadedf7d44bc7a6aa80ab3d78979678a4e2c63"
+    },
+    {
+      "path": "lib/agent/README_AGENT.md",
+      "bytes": 444,
+      "sha256": "531b6d78dfa73829f24c46de83ef88b56a02a7d529de0c3ed31a94fa5a1a8d74"
+    },
+    {
+      "path": "lib/agent/agent_policy.dart",
+      "bytes": 556,
+      "sha256": "8306c140509fa4eef39add2f4de702554837840f8d3ff90043584f0c2a753f4b"
+    },
+    {
+      "path": "lib/agent/tools/base_tool.dart",
+      "bytes": 580,
+      "sha256": "c93c3d7e9a861b6f5ba1587cce638b7f20cbad74d5f9591fafc40db222976ca8"
+    },
+    {
+      "path": "lib/agent/tools/google_tool.dart",
+      "bytes": 1497,
+      "sha256": "93ee4c557bbe4efbe14d8873bc7f84604504044dbdfa300cc2e9aa751971a816"
+    },
+    {
+      "path": "lib/agent/tools/my_files_tool.dart",
+      "bytes": 1093,
+      "sha256": "2129ba6439c6a59a904e19b594d2a44c0d0cad01a65d7a817f41ed8a0508df8b"
+    },
+    {
+      "path": "lib/agent/tools/notes_tool.dart",
+      "bytes": 1227,
+      "sha256": "86887a3efcbb35d1bda9534f2cd3335a9c4c99773bee48f7c86519a0f1ab64f9"
+    },
+    {
+      "path": "lib/agent/models/tool_result.dart",
+      "bytes": 156,
+      "sha256": "2936b1da593a694f1035eebbc5e1d8e849d87e5e5cdb81c1532cdd805be7f330"
+    },
+    {
+      "path": "lib/agent/models/agent_step.dart",
+      "bytes": 267,
+      "sha256": "cfeb7257f83ae80b37c05ec2f19e9c9c55ca956bf5ce5e60ab9c77c10304a4b4"
+    }
+  ],
+  "github_update_files_edited": false,
+  "note": "Source upgrade; device-specific end-to-end behavior requires Android build/device testing."
+}

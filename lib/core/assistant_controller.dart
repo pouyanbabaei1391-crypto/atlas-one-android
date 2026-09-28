@@ -16,6 +16,7 @@ import 'native_bridge.dart';
 import 'settings_service.dart';
 import 'voice_service.dart';
 import 'reply_stream.dart';
+import '../agent/execution_engine.dart';
 
 class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
   final SettingsService settings = SettingsService();
@@ -24,6 +25,7 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
   final NativeBridge bridge = NativeBridge();
   late final AiService ai = AiService(settings);
   late final AppActionService appActions = AppActionService(bridge);
+  late final ExecutionEngine toolAgent = ExecutionEngine(appActions);
   final CameraService camera = CameraService();
   final _uuid = const Uuid();
 
@@ -274,6 +276,12 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
       if (epoch != _turnEpoch) return;
       chunks.finish();
       final actionNotes = await _executeSafeActions(turn.actions);
+      // Deterministic tool fallback: if the local model did not emit UI actions,
+      // route explicit Google/Files/Notes requests through the dedicated tools.
+      if (turn.actions.isEmpty && appActions.enabled) {
+        final routed = await toolAgent.run(user.content, allowedApps, noteText: turn.reply);
+        if (routed.isNotEmpty && !routed.every((e) => e.startsWith('⚠️'))) actionNotes.addAll(routed);
+      }
       if (epoch != _turnEpoch) return;
       final finalReply = actionNotes.isEmpty ? turn.reply : '${turn.reply}\n\n${actionNotes.join('\n')}';
       final assistant = ChatMessage(

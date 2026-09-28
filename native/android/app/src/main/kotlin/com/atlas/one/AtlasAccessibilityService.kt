@@ -70,4 +70,19 @@ class AtlasAccessibilityService : AccessibilityService() {
         }
         return walk(root)
     }
+
+    fun pressEnter(): Boolean {
+        val root = rootInActiveWindow ?: return false
+        val focused = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT) ?: return false
+        val args = Bundle().apply { putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, (focused.text?.toString() ?: "") + "\n") }
+        return focused.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
+    }
+
+    fun pressTab(): Boolean {
+        val root = rootInActiveWindow ?: return false
+        val focused = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT) ?: return false
+        val next = focused.focusSearch(android.view.View.FOCUS_FORWARD) ?: return false
+        return next.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
+    }
+
 }
