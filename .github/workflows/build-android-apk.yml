@@ -37,16 +37,31 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Restore private release keystore
+      - name: Prepare signing key automatically
         env:
           KEYSTORE_BASE64: ${{ secrets.ATLAS_RELEASE_KEYSTORE_BASE64 }}
         run: |
-          test -n "$KEYSTORE_BASE64" || { echo 'Missing ATLAS_RELEASE_KEYSTORE_BASE64 secret'; exit 1; }
-          test -n "$ATLAS_KEY_ALIAS" || { echo 'Missing ATLAS_KEY_ALIAS secret'; exit 1; }
-          test -n "$ATLAS_STORE_PASSWORD" || { echo 'Missing ATLAS_STORE_PASSWORD secret'; exit 1; }
-          test -n "$ATLAS_KEY_PASSWORD" || { echo 'Missing ATLAS_KEY_PASSWORD secret'; exit 1; }
-          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/atlas-release.jks"
-          test -s "$RUNNER_TEMP/atlas-release.jks"
+          if [ -n "$KEYSTORE_BASE64" ] && [ -n "$ATLAS_KEY_ALIAS" ] && [ -n "$ATLAS_STORE_PASSWORD" ] && [ -n "$ATLAS_KEY_PASSWORD" ]; then
+            printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/atlas-release.jks"
+            test -s "$RUNNER_TEMP/atlas-release.jks"
+            echo 'persistent-release-key' > "$RUNNER_TEMP/SIGNING_MODE.txt"
+          else
+            TEMP_PASSWORD="$(openssl rand -hex 24)"
+            echo "::add-mask::$TEMP_PASSWORD"
+            keytool -genkeypair -noprompt -v \
+              -keystore "$RUNNER_TEMP/atlas-release.jks" \
+              -storepass "$TEMP_PASSWORD" \
+              -keypass "$TEMP_PASSWORD" \
+              -alias atlas_temporary \
+              -keyalg RSA -keysize 4096 -validity 3650 \
+              -storetype JKS \
+              -dname 'CN=Atlas One Automated Build, OU=Mobile, O=Atlas One'
+            echo 'ATLAS_KEY_ALIAS=atlas_temporary' >> "$GITHUB_ENV"
+            echo "ATLAS_STORE_PASSWORD=$TEMP_PASSWORD" >> "$GITHUB_ENV"
+            echo "ATLAS_KEY_PASSWORD=$TEMP_PASSWORD" >> "$GITHUB_ENV"
+            echo 'temporary-installable-key' > "$RUNNER_TEMP/SIGNING_MODE.txt"
+            echo '::warning::No permanent release secrets were found. Building an installable test APK with a temporary key.'
+          fi
           echo "ATLAS_KEYSTORE_PATH=$RUNNER_TEMP/atlas-release.jks" >> "$GITHUB_ENV"
 
       - name: Analyze test and build signed APK plus Play bundle
@@ -56,15 +71,16 @@ jobs:
         run: |
           "$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)/apksigner" verify --verbose --print-certs dist/Atlas-One-Secure-Release.apk
           python3 security_addon/verify_release.py dist/Atlas-One-Secure-Release.apk
+          cp "$RUNNER_TEMP/SIGNING_MODE.txt" dist/SIGNING_MODE.txt
 
       - name: Upload verified release files
         uses: actions/upload-artifact@v5
         with:
-          name: Atlas-One-Signed-Release
+          name: Atlas-One-Installable-APK
           path: |
             dist/Atlas-One-Secure-Release.apk
             dist/Atlas-One-Google-Play.aab
             dist/SHA256SUMS.txt
+            dist/SIGNING_MODE.txt
           if-no-files-found: error
           compression-level: 0
-
