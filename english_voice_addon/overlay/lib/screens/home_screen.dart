@@ -87,14 +87,16 @@ class _HomeScreenState extends State<HomeScreen> {
                     active: c.microphoneEnabled,
                     onChanged: c.toggleMicrophone,
                   ),
-                  _FeatureCard(
+                  if (false) // Camera/ScreenVision intentionally hidden in SLIM Agent edition.
+                    _FeatureCard(
                     icon: Icons.visibility_rounded,
                     title: 'Screen Vision',
                     subtitle: 'With your permission',
                     active: c.screenVisionEnabled,
                     onChanged: c.toggleScreenVision,
                   ),
-                  _FeatureCard(
+                  if (false) // Camera/ScreenVision intentionally hidden in SLIM Agent edition.
+                    _FeatureCard(
                     icon: Icons.camera_alt_rounded,
                     title: 'Camera',
                     subtitle: 'Preview hidden',

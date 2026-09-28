@@ -17,6 +17,8 @@ import 'native_bridge.dart';
 import 'settings_service.dart';
 import 'voice_service.dart';
 import 'reply_stream.dart';
+import '../agent/execution_engine.dart';
+import '../agent/live_phone_agent.dart';
 
 class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
   final SettingsService settings = SettingsService();
@@ -25,6 +27,8 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
   final NativeBridge bridge = NativeBridge();
   late final AiService ai = AiService(settings);
   late final AppActionService appActions = AppActionService(bridge);
+  late final ExecutionEngine toolAgent = ExecutionEngine(appActions);
+  late final LivePhoneAgent livePhoneAgent = LivePhoneAgent(appActions);
   final CameraService camera = CameraService();
   final _uuid = const Uuid();
 
@@ -367,6 +371,11 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
       // Persist locally first. Remote embedding work must not block spoken answers.
       if (memoryEnabled) await memory.save(user);
       Future<String?> recall() async {
+        final localHits = await memory.lexicalSearch(user.content, limit: 8);
+        if (!memoryEnabled || memoryEpoch != _memoryEpoch) return null;
+        final local = localHits.where((hit) => hit.message.id != user.id)
+            .map((hit) => '${hit.message.role}: ${hit.message.content}').join('\n');
+        if (local.trim().isNotEmpty) return local;
         final embedding = await ai.embedding(user.content);
         if (!memoryEnabled || memoryEpoch != _memoryEpoch || embedding == null) return null;
         await memory.save(user, embedding: embedding);
@@ -375,11 +384,11 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
             .map((hit) => '${hit.message.role}: ${hit.message.content}').join('\n');
       }
       String? memoryContext;
-      if (memoryEnabled) {
+      if (memoryEnabled && _needsMemoryRecall(user.content)) {
         final retrieval = recall().catchError((Object _) => null);
         memoryContext = shouldSpeak
-            ? await retrieval.timeout(const Duration(milliseconds: 40), onTimeout: () => null)
-            : await retrieval;
+            ? await retrieval.timeout(const Duration(milliseconds: 120), onTimeout: () => null)
+            : await retrieval.timeout(const Duration(milliseconds: 700), onTimeout: () => null);
       }
       if (epoch != _turnEpoch) return;
       var receivedReply = false;
@@ -428,6 +437,16 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
       if (epoch != _turnEpoch) return;
       chunks.finish();
       final actionNotes = await _executeSafeActions(turn.actions);
+      if (turn.actions.isEmpty && appActions.enabled) {
+        final live = await livePhoneAgent.run(user.content, allowedApps, generatedText: turn.reply);
+        if (live.trace.isNotEmpty) {
+          actionNotes.add(live.ok ? '✓ Live Agent: ${live.message}' : '⚠️ Live Agent: ${live.message}');
+          actionNotes.addAll(live.trace.take(12).map((e) => '  • $e'));
+        } else {
+          final routed = await toolAgent.run(user.content, allowedApps, noteText: turn.reply);
+          if (routed.isNotEmpty && !routed.every((e) => e.startsWith('⚠️'))) actionNotes.addAll(routed);
+        }
+      }
       if (epoch != _turnEpoch) return;
       final finalReply = actionNotes.isEmpty ? turn.reply : '${turn.reply}\n\n${actionNotes.join('\n')}';
       final assistant = ChatMessage(
@@ -481,6 +500,12 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
       }
     })().whenComplete(() => _indexJobs.remove(job));
     _indexJobs.add(job);
+  }
+
+  bool _needsMemoryRecall(String text) {
+    final q = text.toLowerCase();
+    const cues = ['یادت','یادته','قبلا','قبلاً','گذشته','گفتم','گفته بودم','صحبت کردیم','آخرین بار','قبلتر','قبل‌تر','remember','earlier','before','last time','previous','we discussed','i told you'];
+    return cues.any(q.contains);
   }
 
   Future<void> interruptAndListen() async {

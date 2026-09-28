@@ -98,6 +98,40 @@ class MemoryService {
     return hits.take(limit).toList();
   }
 
+  /// Fast local retrieval for Qwen/local mode. No network and no embedding wait.
+  Future<List<MemoryHit>> lexicalSearch(String query, {int limit = 8}) async {
+    final tokens = _tokens(query);
+    if (tokens.isEmpty) return const [];
+    final rows = await _db!.query('messages', orderBy: 'created_at DESC', limit: 1200);
+    final hits = <MemoryHit>[];
+    final now = DateTime.now();
+    for (final row in rows) {
+      final msg = await _decode(row);
+      final body = _tokens(msg.content);
+      if (body.isEmpty) continue;
+      var overlap = 0.0;
+      for (final token in tokens) {
+        if (body.contains(token)) overlap += 1.0;
+      }
+      if (overlap == 0) continue;
+      final ageDays = now.difference(msg.createdAt).inHours / 24.0;
+      final recency = 1.0 / (1.0 + ageDays / 180.0);
+      final score = (overlap / tokens.length) * 0.88 + recency * 0.12;
+      hits.add(MemoryHit(msg, score));
+    }
+    hits.sort((a,b) => b.score.compareTo(a.score));
+    return hits.take(limit).toList();
+  }
+
+  Set<String> _tokens(String text) {
+    const stop = {'the','a','an','is','are','was','were','to','of','and','or','in','on','من','تو','را','به','از','که','و','در','این','اون','آن','یک','برای','با','چی','چه'};
+    return text.toLowerCase()
+      .replaceAll(RegExp(r'[^a-z0-9\u0600-\u06ff]+'), ' ')
+      .split(RegExp(r'\s+'))
+      .where((e) => e.length > 1 && !stop.contains(e))
+      .toSet();
+  }
+
   Future<void> wipe() async {
     await _db?.delete('messages');
   }
