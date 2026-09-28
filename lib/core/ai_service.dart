@@ -10,13 +10,19 @@ class AiAction {
   final String type;
   final String? appId;
   final String? uri;
+  final String? text;
+  final String? target;
+  final int? direction;
 
-  const AiAction({required this.type, this.appId, this.uri});
+  const AiAction({required this.type, this.appId, this.uri, this.text, this.target, this.direction});
 
   factory AiAction.fromJson(Map<String, dynamic> json) => AiAction(
         type: (json['type'] ?? '').toString(),
         appId: json['app_id']?.toString(),
         uri: json['uri']?.toString(),
+        text: json['text']?.toString(),
+        target: json['target']?.toString(),
+        direction: int.tryParse(json['direction']?.toString() ?? ''),
       );
 }
 
@@ -76,12 +82,21 @@ ${voiceMode ? 'در گفت‌وگوی صوتی، با یک جملهٔ کوتاه
 اپ‌های مجاز در این لحظه:
 ${appLines.isEmpty ? '(هیچ اپی انتخاب نشده است)' : appLines}
 
-اگر لازم است یک اپ مجاز فقط باز شود، یک action با type=open_app و app_id دقیق بده.
-اگر لازم است یک URI امن باز شود، action با type=open_uri و uri بده. schemeهای مجاز عبارت‌اند از https/http/mailto/tel/sms/geo.
-برای کنترل داخلی اپ‌ها action خیالی تولید نکن؛ فقط از API/Intent/Deep Link رسمی استفاده می‌شود.
+تو یک Tool Agent چندمرحله‌ای نیز هستی. سه خانواده ابزار اصلی را هوشمندانه انتخاب کن:
+- Google/Chrome = ابزار research/search برای پیدا کردن وب، مقاله و تصویر.
+- My Files/Files = ابزار فایل برای Downloads، پیدا کردن فایل دانلودشده و نمایش/بازکردن آن.
+- Notes/Keep = ابزار نوشتن برای ثبت، paste و نگهداری خروجی متنی.
+نام دقیق package را فقط از فهرست اپ‌های مجاز بالا انتخاب کن. اگر ابزار متناظر انتخاب نشده، آن را جعل نکن.
+برای درخواست چندمرحله‌ای، حداکثر 8 action کوچک و قابل بررسی بساز. ترتیب را حفظ کن.
+Actionهای مجاز: open_app, open_uri, wait_ui, click_text, set_text, scroll, back, home, observe_ui.
+click_text.target متن قابل مشاهده دکمه/گزینه است. set_text.text متن مورد نظر برای فیلد متمرکز است.
+بعد از باز کردن اپ یا تغییر صفحه از wait_ui/observe_ui استفاده کن. از مختصات خام استفاده نکن.
+دانلود/نمایش فایل: پس از download، My Files را باز کن و Downloads/نام فایل را از UI پیدا کن.
+نوشتن: Notes را باز کن، note جدید بساز و متن را با set_text وارد کن.
+هرگز PIN/OTP/password، پرداخت، خرید، انتقال مالی، حذف داده یا ارسال نهایی پیام را خودکار اجرا نکن.
 
-فقط JSON معتبر با این ساختار برگردان:
-{"reply":"پاسخ فارسی","actions":[{"type":"open_app","app_id":"..."},{"type":"open_uri","uri":"..."}]}
+فقط JSON معتبر برگردان، مثال:
+{"reply":"در حال انجام کار هستم.","actions":[{"type":"open_app","app_id":"..."},{"type":"wait_ui"},{"type":"click_text","target":"Search"},{"type":"set_text","text":"..."},{"type":"observe_ui"}]}
 اگر اقدامی لازم نیست actions باید [] باشد.
 ${memoryContext == null || memoryContext.trim().isEmpty ? '' : '\nزمینه حافظه مرتبط:\n$memoryContext'}
 ''';

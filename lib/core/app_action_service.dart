@@ -21,6 +21,15 @@ class AppActionService {
     return launchUrl(parsed, mode: LaunchMode.externalApplication);
   }
 
+  Future<bool> accessibilityEnabled() => bridge.accessibilityEnabled();
+  Future<void> requestAccessibility() => bridge.openAccessibilitySettings();
+  Future<String> observeUi() => bridge.observeUi();
+  Future<bool> clickText(String text) => bridge.clickText(text);
+  Future<bool> setText(String text) => bridge.setFocusedText(text);
+  Future<bool> scroll(int direction) => bridge.scrollUi(direction);
+  Future<bool> back() => bridge.globalBack();
+  Future<bool> home() => bridge.globalHome();
+
   void disable() {
     enabled = false;
     allowedAppIds.clear();

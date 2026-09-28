@@ -85,6 +85,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     active: c.microphoneEnabled,
                     onChanged: c.toggleMicrophone,
                   ),
+                  /* ATLAS_TOOL_AGENT_V3: Camera and ScreenVision UI intentionally hidden.
                   _FeatureCard(
                     icon: Icons.visibility_rounded,
                     title: 'دیدن صفحه',
@@ -99,6 +100,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     active: c.cameraEnabled,
                     onChanged: c.toggleCamera,
                   ),
+                  */
                   _FeatureCard(
                     icon: Icons.apps_rounded,
                     title: 'برنامه‌ها',

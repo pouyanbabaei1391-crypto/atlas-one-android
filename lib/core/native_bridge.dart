@@ -14,5 +14,14 @@ class NativeBridge {
   }
 
   Future<bool> launchApp(String id) async => (await _channel.invokeMethod<bool>('launchApp', {'id': id})) ?? false;
+  Future<bool> accessibilityEnabled() async => (await _channel.invokeMethod<bool>('accessibilityEnabled')) ?? false;
+  Future<void> openAccessibilitySettings() => _channel.invokeMethod('openAccessibilitySettings');
+  Future<String> observeUi() async => (await _channel.invokeMethod<String>('observeUi')) ?? '';
+  Future<bool> clickText(String text) async => (await _channel.invokeMethod<bool>('clickText', {'text': text})) ?? false;
+  Future<bool> setFocusedText(String text) async => (await _channel.invokeMethod<bool>('setFocusedText', {'text': text})) ?? false;
+  Future<bool> scrollUi(int direction) async => (await _channel.invokeMethod<bool>('scrollUi', {'direction': direction})) ?? false;
+  Future<bool> globalBack() async => (await _channel.invokeMethod<bool>('globalBack')) ?? false;
+  Future<bool> globalHome() async => (await _channel.invokeMethod<bool>('globalHome')) ?? false;
+
   Future<void> revokeSensitivePermissions() => _channel.invokeMethod('revokeSensitivePermissions');
 }

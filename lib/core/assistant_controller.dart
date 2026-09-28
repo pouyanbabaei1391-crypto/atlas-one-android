@@ -233,6 +233,12 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
       // Persist locally first. Remote embedding work must not block spoken answers.
       if (memoryEnabled) await memory.save(user);
       Future<String?> recall() async {
+        // Local lexical recall is immediate and keeps Qwen independent of an embedding server.
+        final localHits = await memory.lexicalSearch(user.content, limit: 8);
+        if (!memoryEnabled || memoryEpoch != _memoryEpoch) return null;
+        final local = localHits.where((hit) => hit.message.id != user.id)
+            .map((hit) => '${hit.message.role}: ${hit.message.content}').join('\n');
+        if (local.trim().isNotEmpty) return local;
         final embedding = await ai.embedding(user.content);
         if (!memoryEnabled || memoryEpoch != _memoryEpoch || embedding == null) return null;
         await memory.save(user, embedding: embedding);
@@ -241,11 +247,11 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
             .map((hit) => '${hit.message.role}: ${hit.message.content}').join('\n');
       }
       String? memoryContext;
-      if (memoryEnabled) {
+      if (memoryEnabled && _needsMemoryRecall(user.content)) {
         final retrieval = recall().catchError((Object _) => null);
         memoryContext = shouldSpeak
-            ? await retrieval.timeout(const Duration(milliseconds: 150), onTimeout: () => null)
-            : await retrieval;
+            ? await retrieval.timeout(const Duration(milliseconds: 120), onTimeout: () => null)
+            : await retrieval.timeout(const Duration(milliseconds: 700), onTimeout: () => null);
       }
       if (epoch != _turnEpoch) return;
       final turn = await ai.chat(
@@ -317,6 +323,12 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
     _indexJobs.add(job);
   }
 
+  bool _needsMemoryRecall(String text) {
+    final q = text.toLowerCase();
+    const cues = ['یادت','یادته','قبلا','قبلاً','گذشته','گفتم','گفته بودم','صحبت کردیم','آخرین بار','قبلتر','قبل‌تر','remember','earlier','before','last time','previous','we discussed','i told you'];
+    return cues.any(q.contains);
+  }
+
   Future<void> interruptAndListen() async {
     _listenTimer?.cancel();
     _listenEpoch++;
@@ -340,21 +352,45 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<List<String>> _executeSafeActions(List<AiAction> actions) async {
     final notes = <String>[];
-    for (final action in actions.take(3)) {
-      if (action.type == 'open_app' && action.appId != null) {
-        final id = action.appId!;
-        if (!appActions.allowedAppIds.contains(id)) {
-          notes.add('⛔ اپ درخواست‌شده در فهرست مجاز کاربر نیست.');
-          continue;
-        }
-        final ok = await appActions.openSelectedApp(id);
-        notes.add(ok ? '✓ اپ انتخاب‌شده باز شد.' : '⚠️ باز کردن اپ ممکن نشد.');
-      } else if (action.type == 'open_uri' && action.uri != null) {
-        final ok = await appActions.openUri(action.uri!);
-        notes.add(ok ? '✓ لینک/عملیات مجاز باز شد.' : '⚠️ URI مجاز یا قابل اجرا نبود.');
-      }
+    for (final action in actions.take(8)) {
+      try {
+        if (action.type == 'open_app' && action.appId != null) {
+          final id = action.appId!;
+          if (!appActions.allowedAppIds.contains(id)) { notes.add('⛔ ابزار در فهرست مجاز کاربر نیست.'); continue; }
+          final ok = await appActions.openSelectedApp(id);
+          notes.add(ok ? '✓ ابزار باز شد.' : '⚠️ باز کردن ابزار ممکن نشد.');
+          await Future.delayed(const Duration(milliseconds: 700));
+        } else if (action.type == 'open_uri' && action.uri != null) {
+          final ok = await appActions.openUri(action.uri!);
+          notes.add(ok ? '✓ لینک باز شد.' : '⚠️ URI قابل اجرا نبود.');
+        } else if (action.type == 'wait_ui') {
+          await Future.delayed(const Duration(milliseconds: 800));
+        } else if (action.type == 'observe_ui') {
+          final ui = await appActions.observeUi();
+          notes.add(ui.isEmpty ? '⚠️ UI قابل مشاهده نبود.' : '✓ وضعیت رابط بررسی شد.');
+        } else if (action.type == 'click_text' && action.target != null) {
+          if (!await appActions.accessibilityEnabled()) { await appActions.requestAccessibility(); notes.add('⚠️ برای کنترل برنامه‌ها Accessibility را یک‌بار فعال کنید.'); break; }
+          final ok = await appActions.clickText(action.target!);
+          notes.add(ok ? '✓ گزینه ${action.target} انتخاب شد.' : '⚠️ گزینه ${action.target} پیدا نشد؛ زنجیره متوقف شد.');
+          if (!ok) break;
+        } else if (action.type == 'set_text' && action.text != null) {
+          if (_looksSensitive(action.text!)) { notes.add('⛔ ورود خودکار داده حساس متوقف شد.'); break; }
+          final ok = await appActions.setText(action.text!);
+          notes.add(ok ? '✓ متن وارد شد.' : '⚠️ فیلد قابل نوشتن پیدا نشد؛ زنجیره متوقف شد.');
+          if (!ok) break;
+        } else if (action.type == 'scroll') {
+          final ok = await appActions.scroll(action.direction ?? 1);
+          if (!ok) { notes.add('⚠️ پیمایش ممکن نشد.'); break; }
+        } else if (action.type == 'back') { await appActions.back();
+        } else if (action.type == 'home') { await appActions.home(); }
+      } catch (_) { notes.add('⚠️ اجرای مرحله متوقف شد.'); break; }
     }
     return notes;
+  }
+
+  bool _looksSensitive(String text) {
+    final q=text.toLowerCase();
+    return RegExp(r'\b\d{4,8}\b').hasMatch(q) && (q.contains('otp') || q.contains('pin') || q.contains('رمز'));
   }
 
   void _startVisionLoop() {
