@@ -64,22 +64,3 @@ def configure(work: Path):
         raise RuntimeError('Local Qwen3 build expects current Flutter Kotlin Gradle templates.')
     with path.open('a', encoding='utf-8') as output:
         output.write('\nandroid {\n    defaultConfig {\n        minSdk = 28\n        ndk { abiFilters.clear(); abiFilters.add("arm64-v8a") }\n        externalNativeBuild {\n            cmake { arguments.add("-DANDROID_STL=c++_shared") }\n        }\n    }\n    externalNativeBuild {\n        cmake {\n            path = file("src/main/cpp/CMakeLists.txt")\n            version = "3.22.1"\n        }\n    }\n    androidResources { noCompress.add("ggufpart") }\n}\n')
-
-# Additive ATCS integration: existing builder behavior above remains unchanged.
-# This hook edits only the disposable staging copy created by build.py.
-try:
-    from atcs_build_hook import install_atcs as _install_atcs
-except ImportError:
-    _install_atcs = None
-
-if _install_atcs is not None:
-    _atcs_original_copytree = shutil.copytree
-    _atcs_overlay = (Path(__file__).resolve().parent / 'overlay').resolve()
-
-    def _atcs_copytree(src, dst, *args, **kwargs):
-        result = _atcs_original_copytree(src, dst, *args, **kwargs)
-        if Path(src).resolve() == _atcs_overlay:
-            _install_atcs(Path(dst).resolve())
-        return result
-
-    shutil.copytree = _atcs_copytree

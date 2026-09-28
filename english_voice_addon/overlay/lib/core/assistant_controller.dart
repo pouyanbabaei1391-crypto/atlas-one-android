@@ -17,8 +17,6 @@ import 'native_bridge.dart';
 import 'settings_service.dart';
 import 'voice_service.dart';
 import 'reply_stream.dart';
-import 'memory_intent_router.dart';
-import 'vision_intelligence_service.dart';
 
 class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
   final SettingsService settings = SettingsService();
@@ -28,7 +26,6 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
   late final AiService ai = AiService(settings);
   late final AppActionService appActions = AppActionService(bridge);
   final CameraService camera = CameraService();
-  final VisionIntelligenceService vision = VisionIntelligenceService();
   final _uuid = const Uuid();
 
   final List<ChatMessage> messages = [];
@@ -37,7 +34,6 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
   bool screenVisionEnabled = false;
   bool cameraEnabled = false;
   bool memoryEnabled = true;
-  int memoryMessageCount = 0;
   bool busy = false;
   String liveTranscript = '';
   String status = 'Ready';
@@ -103,7 +99,6 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
   int? firstSpeechMilliseconds;
   Stopwatch? _responseWatch;
   final Set<Future<void>> _indexJobs = {};
-  final Set<String> _sessionMessageIds = {};
 
   static const shutdownPhrases = [
     'خاموش شو',
@@ -173,10 +168,8 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
         }
       } catch (e) { status = _voiceError(e); }
     }
-    memoryEnabled = await settings.memoryEnabled;
     await memory.init();
-    memoryMessageCount = await memory.count();
-    if (memoryEnabled) messages.addAll(await memory.recent(limit: 30));
+    messages.addAll(await memory.recent(limit: 30));
     notifyListeners();
   }
 
@@ -323,7 +316,7 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
           if (app.selected) app.id: app.name,
       };
 
-  Future<void> send(String text, {String? imageBase64, bool? speakReply, bool cameraImage = false}) async {
+  Future<void> send(String text, {String? imageBase64, bool? speakReply}) async {
     if (busy || text.trim().isEmpty) return;
     busy = true;
     final epoch = ++_turnEpoch;
@@ -355,69 +348,50 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
     try {
       await voice.cancelListening();
       String? secondImage;
-      String? visualContext;
-      if (imageBase64 != null && cameraImage) {
-        visualContext = (await vision.analyzeBase64(imageBase64)).toPromptContext();
-      }
       if (imageBase64 == null && screenVisionEnabled) {
         imageBase64 = await bridge.captureScreenFrame();
         if (imageBase64 == null || imageBase64.isEmpty) {
           throw StateError('No current screen image is available. Check screen sharing.');
         }
-        if (cameraEnabled) {
-          secondImage = await camera.captureBase64();
-          visualContext = (await vision.analyzeBase64(secondImage)).toPromptContext();
-        }
+        if (cameraEnabled) secondImage = await camera.captureBase64();
       } else if (imageBase64 == null && cameraEnabled) {
         imageBase64 = await camera.captureBase64();
-        cameraImage = true;
-        visualContext = (await vision.analyzeBase64(imageBase64)).toPromptContext();
       }
       if (epoch != _turnEpoch) return;
       final user = ChatMessage(
         id: _uuid.v4(), role: 'user', content: text.trim(), createdAt: DateTime.now(),
       );
       messages.add(user);
-      _sessionMessageIds.add(user.id);
       notifyListeners();
       final memoryEpoch = _memoryEpoch;
       // Persist locally first. Remote embedding work must not block spoken answers.
-      if (memoryEnabled) {
-        await memory.save(user);
-        memoryMessageCount++;
-      }
+      if (memoryEnabled) await memory.save(user);
       Future<String?> recall() async {
-        if (!memoryEnabled || memoryEpoch != _memoryEpoch ||
-            !MemoryIntentRouter.shouldRecall(user.content)) return null;
-        final hits = await memory.relevantText(user.content);
-        return hits.where((hit) => hit.message.id != user.id)
-            .take(6)
-            .map((hit) {
-              final text = hit.message.content;
-              final bounded = text.length > 420 ? '${text.substring(0, 420)}…' : text;
-              return '${hit.message.role}: $bounded';
-            }).join('\n');
+        final embedding = await ai.embedding(user.content);
+        if (!memoryEnabled || memoryEpoch != _memoryEpoch || embedding == null) return null;
+        await memory.save(user, embedding: embedding);
+        final hits = await memory.semanticSearch(embedding);
+        return hits.where((hit) => hit.score > 0.25 && hit.message.id != user.id)
+            .map((hit) => '${hit.message.role}: ${hit.message.content}').join('\n');
       }
       String? memoryContext;
       if (memoryEnabled) {
         final retrieval = recall().catchError((Object _) => null);
-        memoryContext = await retrieval;
+        memoryContext = shouldSpeak
+            ? await retrieval.timeout(const Duration(milliseconds: 40), onTimeout: () => null)
+            : await retrieval;
       }
       if (epoch != _turnEpoch) return;
       var receivedReply = false;
       Future<AiTurn> requestAnswer({required bool forceCloud}) => ai.chat(
-        history: messages
-            .where((message) => message.id != user.id && _sessionMessageIds.contains(message.id))
-            .toList(growable: false),
+        history: messages.length > 1 ? messages.sublist(0, messages.length - 1) : const [],
         userText: user.content,
         imageBase64: imageBase64,
         secondImageBase64: secondImage,
         memoryContext: memoryContext,
-        visualContext: visualContext,
         allowedApps: allowedApps,
         voiceMode: shouldSpeak,
         forceCloud: forceCloud,
-        requiresVisualModel: screenVisionEnabled || (imageBase64 != null && !cameraImage),
         onReply: (reply) {
           if (epoch != _turnEpoch || reply.isEmpty) return;
           receivedReply = true;
@@ -432,9 +406,7 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
       await ai.local.refresh();
       // Once the downloaded model is ready, every normal text/voice turn starts
       // on-device. Cloud remains only the existing emergency fallback.
-      final cloudFirst = memoryContext == null &&
-          ((screenVisionEnabled && cloudConfigured) ||
-           (shouldSpeak && cloudConfigured && !ai.local.ready));
+      final cloudFirst = shouldSpeak && cloudConfigured && !ai.local.ready;
       late AiTurn turn;
       try {
         turn = await requestAnswer(forceCloud: cloudFirst);
@@ -445,7 +417,7 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
           status = 'Cloud delayed · answering privately on this phone…';
           notifyListeners();
           turn = await requestAnswer(forceCloud: false);
-        } else if (!cloudFirst && cloudConfigured && memoryContext == null) {
+        } else if (!cloudFirst && cloudConfigured) {
           status = 'Local engine delayed · switching to fast cloud…';
           notifyListeners();
           turn = await requestAnswer(forceCloud: true);
@@ -462,12 +434,10 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
         id: _uuid.v4(), role: 'assistant', content: finalReply, createdAt: DateTime.now(),
       );
       messages.add(assistant);
-      _sessionMessageIds.add(assistant.id);
       streamingReply = '';
       notifyListeners();
       if (memoryEnabled && memoryEpoch == _memoryEpoch) {
         await memory.save(assistant);
-        memoryMessageCount++;
         _indexLater(assistant, memoryEpoch);
       }
       await speechQueue;
@@ -502,7 +472,6 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
     late Future<void> job;
     job = (() async {
       try {
-        if (!await settings.remoteMemoryIndexingEnabled) return;
         final embedding = await ai.embedding(message.content);
         if (memoryEnabled && memoryEpoch == _memoryEpoch && embedding != null) {
           await memory.save(message, embedding: embedding);
@@ -559,10 +528,10 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
     if (_disposed) return;
     _visionTimer?.cancel();
     if (!screenVisionEnabled && !cameraEnabled) return;
-    // Continuous camera perception remains silent. A fresh analyzed frame is
-    // sent to the LLM only when the user asks a question.
-    _visionTimer = Timer(const Duration(seconds: 3), () async {
-      if (!busy && !voice.isSpeaking) {
+    // No preview is mounted. Fresh frames accompany each user turn; when the
+    // microphone is off, periodically describe the active visual source aloud.
+    _visionTimer = Timer(const Duration(seconds: 4), () async {
+      if (!busy && !microphoneEnabled && !voice.isSpeaking) {
         await _inspectActiveVision();
       }
       _startVisionLoop();
@@ -571,26 +540,10 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<void> _inspectActiveVision() async {
     if (busy || (!screenVisionEnabled && !cameraEnabled)) return;
-    if (cameraEnabled) {
-      try {
-        final frame = await camera.captureBase64();
-        await vision.analyzeBase64(frame);
-        if (!microphoneEnabled) {
-          status = 'Camera intelligence active · silent on-device analysis';
-          notifyListeners();
-        }
-      } catch (_) {
-        if (!microphoneEnabled) {
-          status = 'Camera is on · object analysis will retry';
-          notifyListeners();
-        }
-      }
-    } else if (screenVisionEnabled) {
-      await send(
-        'Review the current screen. Briefly describe readable text, the current state, and the most useful next step. Say when something is unclear.',
-        speakReply: true,
-      );
-    }
+    await send(screenVisionEnabled
+        ? 'Review the current screen. Briefly describe readable text, the current state, and the most useful next step. Say when something is unclear.'
+        : 'Briefly describe what is visible in the camera frame. Report only clear observations.',
+        speakReply: true);
   }
 
   Future<void> toggleScreenVision(bool value) async {
@@ -668,16 +621,13 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
           return;
         }
         if (access != _accessEpoch) return;
-        status = 'Starting camera and on-device YOLO26x…';
-        notifyListeners();
         await camera.start();
-        await vision.initialize();
         if (access != _accessEpoch) {
           await camera.stop();
           return;
         }
         cameraEnabled = true;
-        status = 'Camera intelligence is on; analysis stays on this phone.';
+        status = 'Camera is on; preview is hidden.';
       } else {
         cameraEnabled = false;
         if (_visionTurn) await _cancelTurn();
@@ -686,8 +636,7 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
       }
     } catch (_) {
       cameraEnabled = false;
-      await camera.stop();
-      status = 'Camera or its on-device object model is unavailable. Check permission, storage, and connection for first setup.';
+      status = 'Camera is unavailable. Check permissions and whether another app is using it.';
     } finally {
       _sensorChanging = false;
       notifyListeners();
@@ -716,7 +665,7 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
     if (!cameraEnabled || busy) return;
     try {
       final frame = await camera.captureBase64();
-      if (cameraEnabled) await send(question, imageBase64: frame, speakReply: true, cameraImage: true);
+      if (cameraEnabled) await send(question, imageBase64: frame, speakReply: true);
     } catch (_) {
       status = 'Could not capture a camera image.';
       notifyListeners();
@@ -821,19 +770,12 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
     unawaited(voice.endSession());
     unawaited(voice.stopSpeaking());
     unawaited(camera.stop());
-    unawaited(vision.dispose());
     super.dispose();
   }
 
-  Future<void> setMemoryEnabled(bool value) async {
+  void setMemoryEnabled(bool value) {
     _memoryEpoch++;
     memoryEnabled = value;
-    await settings.setMemoryEnabled(value);
-    if (value) {
-      final restored = await memory.recent(limit: 30);
-      final existing = messages.map((m) => m.id).toSet();
-      messages.insertAll(0, restored.where((m) => !existing.contains(m.id)));
-    }
     notifyListeners();
   }
 
@@ -841,8 +783,6 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
     _memoryEpoch++;
     await memory.wipe();
     messages.clear();
-    _sessionMessageIds.clear();
-    memoryMessageCount = 0;
     notifyListeners();
   }
 }

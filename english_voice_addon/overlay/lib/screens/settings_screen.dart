@@ -116,7 +116,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             value: c.memoryEnabled,
             onChanged: c.setMemoryEnabled,
             title: const Text('Long-term memory'),
-            subtitle: Text('AES-GCM encrypted · ${c.memoryMessageCount} messages · recalled only when needed'),
+            subtitle: const Text('Encrypted conversation storage and semantic recall'),
           ),
           ListTile(
             title: const Text('Clear Atlas memory'),

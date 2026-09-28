@@ -22,7 +22,6 @@ dependencies:
   url_launcher: ^6.3.2
   shared_preferences: ^2.5.3
   uuid: ^4.5.1
-  ultralytics_yolo: ^0.6.15
 
 dev_dependencies:
   flutter_test:

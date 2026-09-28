@@ -97,7 +97,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   _FeatureCard(
                     icon: Icons.camera_alt_rounded,
                     title: 'Camera',
-                    subtitle: 'YOLO26x · on-device',
+                    subtitle: 'Preview hidden',
                     active: c.cameraEnabled,
                     onChanged: c.toggleCamera,
                   ),
@@ -120,7 +120,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   _FeatureCard(
                     icon: Icons.memory_rounded,
                     title: 'Memory',
-                    subtitle: 'Encrypted · ${c.memoryMessageCount} saved',
+                    subtitle: 'Encrypted memory',
                     active: c.memoryEnabled,
                     onChanged: (enabled) async => c.setMemoryEnabled(enabled),
                   ),

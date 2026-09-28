@@ -10,12 +10,6 @@ class SettingsService {
   Future<void> setUseLocalAi(bool value) => _storage.write(key: 'use_local_qwen3', value: value.toString());
   Future<bool> get modelTermsAccepted async => (await _storage.read(key: 'qwen3_terms')) == 'accepted';
   Future<void> acceptModelTerms() => _storage.write(key: 'qwen3_terms', value: 'accepted');
-  Future<bool> get memoryEnabled async =>
-      (await _storage.read(key: 'encrypted_memory_enabled')) != 'false';
-  Future<void> setMemoryEnabled(bool value) =>
-      _storage.write(key: 'encrypted_memory_enabled', value: value.toString());
-  Future<bool> get remoteMemoryIndexingEnabled async =>
-      (await _storage.read(key: 'remote_memory_indexing_enabled')) == 'true';
   static const _storage = FlutterSecureStorage();
 
   Future<String> get userName async =>

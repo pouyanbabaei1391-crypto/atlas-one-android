@@ -1,28 +1,21 @@
-name: Build Signed Atlas Android Release
+name: Build Atlas Android Slim Qwen3 APK
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
 
 permissions:
   contents: read
 
 concurrency:
-  group: atlas-secure-android-${{ github.ref }}
+  group: atlas-android-slim-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build-signed-release:
+  build-slim-apk:
     runs-on: ubuntu-latest
     timeout-minutes: 90
-    env:
-      ATLAS_BUNDLE_MODEL: 'false'
-      ATLAS_KEY_ALIAS: ${{ secrets.ATLAS_KEY_ALIAS }}
-      ATLAS_STORE_PASSWORD: ${{ secrets.ATLAS_STORE_PASSWORD }}
-      ATLAS_KEY_PASSWORD: ${{ secrets.ATLAS_KEY_PASSWORD }}
     steps:
-      - name: Check out exact source
+      - name: Check out source
         uses: actions/checkout@v5
 
       - name: Set up Java 17
@@ -37,50 +30,18 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Prepare signing key automatically
+      - name: Test and build Slim local Qwen3 edition
         env:
-          KEYSTORE_BASE64: ${{ secrets.ATLAS_RELEASE_KEYSTORE_BASE64 }}
-        run: |
-          if [ -n "$KEYSTORE_BASE64" ] && [ -n "$ATLAS_KEY_ALIAS" ] && [ -n "$ATLAS_STORE_PASSWORD" ] && [ -n "$ATLAS_KEY_PASSWORD" ]; then
-            printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/atlas-release.jks"
-            test -s "$RUNNER_TEMP/atlas-release.jks"
-            echo 'persistent-release-key' > "$RUNNER_TEMP/SIGNING_MODE.txt"
-          else
-            TEMP_PASSWORD="$(openssl rand -hex 24)"
-            echo "::add-mask::$TEMP_PASSWORD"
-            keytool -genkeypair -noprompt -v \
-              -keystore "$RUNNER_TEMP/atlas-release.jks" \
-              -storepass "$TEMP_PASSWORD" \
-              -keypass "$TEMP_PASSWORD" \
-              -alias atlas_temporary \
-              -keyalg RSA -keysize 4096 -validity 3650 \
-              -storetype JKS \
-              -dname 'CN=Atlas One Automated Build, OU=Mobile, O=Atlas One'
-            echo 'ATLAS_KEY_ALIAS=atlas_temporary' >> "$GITHUB_ENV"
-            echo "ATLAS_STORE_PASSWORD=$TEMP_PASSWORD" >> "$GITHUB_ENV"
-            echo "ATLAS_KEY_PASSWORD=$TEMP_PASSWORD" >> "$GITHUB_ENV"
-            echo 'temporary-installable-key' > "$RUNNER_TEMP/SIGNING_MODE.txt"
-            echo '::warning::No permanent release secrets were found. Building an installable test APK with a temporary key.'
-          fi
-          echo "ATLAS_KEYSTORE_PATH=$RUNNER_TEMP/atlas-release.jks" >> "$GITHUB_ENV"
+          ATLAS_BUNDLE_MODEL: 'false'
+        run: python3 english_voice_addon/build.py android
 
-      - name: Analyze test and build signed APK plus Play bundle
-        run: python3 SECURE_BUILD.py android
+      - name: Enforce Slim installer ceiling
+        run: python3 english_voice_addon/verify_slim_apk.py dist/Atlas-One-Android.apk --max-bytes 800000000
 
-      - name: Verify APK signature and release policy
-        run: |
-          "$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)/apksigner" verify --verbose --print-certs dist/Atlas-One-Secure-Release.apk
-          python3 security_addon/verify_release.py dist/Atlas-One-Secure-Release.apk
-          cp "$RUNNER_TEMP/SIGNING_MODE.txt" dist/SIGNING_MODE.txt
-
-      - name: Upload verified release files
+      - name: Upload verified Slim APK
         uses: actions/upload-artifact@v5
         with:
-          name: Atlas-One-Installable-APK
-          path: |
-            dist/Atlas-One-Secure-Release.apk
-            dist/Atlas-One-Google-Play.aab
-            dist/SHA256SUMS.txt
-            dist/SIGNING_MODE.txt
+          name: Atlas-One-Android-SLIM-QWEN3-APK
+          path: dist/Atlas-One-Android.apk
           if-no-files-found: error
           compression-level: 0
