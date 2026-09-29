@@ -101,6 +101,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     onChanged: c.toggleCamera,
                   ),
                   */
+                  /* AUTONOMOUS_APP_CONTROL: app picker intentionally hidden.
                   _FeatureCard(
                     icon: Icons.apps_rounded,
                     title: 'برنامه‌ها',
@@ -117,6 +118,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       }
                     },
                   ),
+                  */
                   _FeatureCard(
                     icon: Icons.memory_rounded,
                     title: 'حافظه',

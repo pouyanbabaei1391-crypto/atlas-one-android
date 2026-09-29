@@ -9,6 +9,7 @@ import android.graphics.Canvas
 import android.graphics.drawable.Drawable
 import android.media.projection.MediaProjectionManager
 import android.os.Build
+import android.provider.Settings
 import android.util.Base64
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -41,6 +42,28 @@ class MainActivity : FlutterActivity() {
                     val id = call.argument<String>("id")
                     result.success(id != null && launchPackage(id))
                 }
+                "accessibilityEnabled" -> result.success(AtlasAccessibilityService.instance != null)
+                "openAccessibilitySettings" -> {
+                    startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    result.success(null)
+                }
+                "observeUi" -> result.success(AtlasAccessibilityService.instance?.observe() ?: "")
+                "observeUiStructured" -> result.success(AtlasAccessibilityService.instance?.observeStructured() ?: "{\"nodes\":[]}")
+                "clickViewId" -> result.success(AtlasAccessibilityService.instance?.clickViewId(call.argument<String>("viewId") ?: "") ?: false)
+                "focusText" -> result.success(AtlasAccessibilityService.instance?.focusText(call.argument<String>("text") ?: "") ?: false)
+                "setFirstEditableText" -> result.success(AtlasAccessibilityService.instance?.setTextInFirstEditable(call.argument<String>("text") ?: "") ?: false)
+                "clickText" -> result.success(AtlasAccessibilityService.instance?.clickText(call.argument<String>("text") ?: "") ?: false)
+                "setFocusedText" -> result.success(AtlasAccessibilityService.instance?.setFocusedText(call.argument<String>("text") ?: "") ?: false)
+                "scrollUi" -> result.success(AtlasAccessibilityService.instance?.scroll(call.argument<Int>("direction") ?: 1) ?: false)
+                "globalBack" -> result.success(AtlasAccessibilityService.instance?.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK) ?: false)
+                "globalHome" -> result.success(AtlasAccessibilityService.instance?.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_HOME) ?: false)
+                "pressEnter" -> result.success(AtlasAccessibilityService.instance?.pressEnter() ?: false)
+                "pressTab" -> result.success(AtlasAccessibilityService.instance?.pressTab() ?: false)
+                "longClickFirstImage" -> result.success(AtlasAccessibilityService.instance?.longClickFirstImage() ?: false)
+                "clickFirstMeaningfulLink" -> result.success(AtlasAccessibilityService.instance?.clickFirstMeaningfulLink() ?: false)
+                "clickFirstFileCandidate" -> result.success(AtlasAccessibilityService.instance?.clickFirstFileCandidate() ?: false)
+                "openNotifications" -> result.success(AtlasAccessibilityService.instance?.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_NOTIFICATIONS) ?: false)
+                "openRecents" -> result.success(AtlasAccessibilityService.instance?.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_RECENTS) ?: false)
                 "revokeSensitivePermissions" -> {
                     revokeSensitivePermissions()
                     result.success(null)

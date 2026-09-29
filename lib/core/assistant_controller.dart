@@ -76,6 +76,15 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
   Future<void> init() async {
     WidgetsBinding.instance.addObserver(this);
     await memory.init();
+    try {
+      await loadApps();
+      appActions.enabled = true;
+      appActions.allowedAppIds
+        ..clear()
+        ..addAll(apps.map((e) => e.id));
+    } catch (_) {
+      appActions.enabled = true;
+    }
     messages.addAll(await memory.recent(limit: 30));
     notifyListeners();
   }
@@ -185,8 +194,7 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Map<String, String> get allowedApps => {
-        for (final app in apps)
-          if (app.selected) app.id: app.name,
+        for (final app in apps) app.id: app.name,
       };
 
   Future<void> send(String text, {String? imageBase64, bool? speakReply}) async {
@@ -280,8 +288,13 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
       final actionNotes = await _executeSafeActions(turn.actions);
       // Deterministic tool fallback: if the local model did not emit UI actions,
       // route explicit Google/Files/Notes requests through the dedicated tools.
-      if (turn.actions.isEmpty && appActions.enabled) {
+      final toolLikeRequest = RegExp(
+        r'google|search|find|image|photo|picture|download|note|article|notification|recent apps|جستجو|جست‌وجو|پیدا کن|عکس|تصویر|دانلود|یادداشت|مقاله|اعلان|برنامه[‌ ]های اخیر',
+        caseSensitive: false,
+      ).hasMatch(user.content);
+      if ((turn.actions.isEmpty || toolLikeRequest) && appActions.enabled) {
         // Full live loop: observe -> act -> verify -> recover using the foreground UI.
+        // Tool-like requests are verified deterministically even when Qwen emitted actions.
         final live = await livePhoneAgent.run(user.content, allowedApps, generatedText: turn.reply);
         if (live.trace.isNotEmpty) {
           actionNotes.add(live.ok ? '✓ Live Agent: ${live.message}' : '⚠️ Live Agent: ${live.message}');
@@ -373,7 +386,6 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
       try {
         if (action.type == 'open_app' && action.appId != null) {
           final id = action.appId!;
-          if (!appActions.allowedAppIds.contains(id)) { notes.add('⛔ ابزار در فهرست مجاز کاربر نیست.'); continue; }
           final ok = await appActions.openSelectedApp(id);
           notes.add(ok ? '✓ ابزار باز شد.' : '⚠️ باز کردن ابزار ممکن نشد.');
           await Future.delayed(const Duration(milliseconds: 700));
@@ -560,6 +572,10 @@ class AssistantController extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<void> loadApps() async {
     apps = await bridge.listApps();
+    appActions.allowedAppIds
+      ..clear()
+      ..addAll(apps.map((e) => e.id));
+    appActions.enabled = true;
     notifyListeners();
   }
 

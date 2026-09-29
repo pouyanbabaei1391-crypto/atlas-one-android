@@ -28,6 +28,11 @@ class NativeBridge {
   Future<bool> globalHome() async => (await _channel.invokeMethod<bool>('globalHome')) ?? false;
   Future<bool> pressEnter() async => (await _channel.invokeMethod<bool>('pressEnter')) ?? false;
   Future<bool> pressTab() async => (await _channel.invokeMethod<bool>('pressTab')) ?? false;
+  Future<bool> longClickFirstImage() async => (await _channel.invokeMethod<bool>('longClickFirstImage')) ?? false;
+  Future<bool> clickFirstMeaningfulLink() async => (await _channel.invokeMethod<bool>('clickFirstMeaningfulLink')) ?? false;
+  Future<bool> clickFirstFileCandidate() async => (await _channel.invokeMethod<bool>('clickFirstFileCandidate')) ?? false;
+  Future<bool> openNotifications() async => (await _channel.invokeMethod<bool>('openNotifications')) ?? false;
+  Future<bool> openRecents() async => (await _channel.invokeMethod<bool>('openRecents')) ?? false;
 
   Future<void> revokeSensitivePermissions() => _channel.invokeMethod('revokeSensitivePermissions');
 }

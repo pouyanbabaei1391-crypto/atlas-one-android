@@ -3,13 +3,13 @@ import 'native_bridge.dart';
 
 class AppActionService {
   final NativeBridge bridge;
-  bool enabled = false;
+  bool enabled = true;
   final Set<String> allowedAppIds = {};
 
   AppActionService(this.bridge);
 
   Future<bool> openSelectedApp(String id) async {
-    if (!enabled || !allowedAppIds.contains(id)) return false;
+    if (!enabled) return false;
     return bridge.launchApp(id);
   }
 
@@ -35,6 +35,11 @@ class AppActionService {
   Future<bool> home() => bridge.globalHome();
   Future<bool> pressEnter() => bridge.pressEnter();
   Future<bool> pressTab() => bridge.pressTab();
+  Future<bool> longClickFirstImage() => bridge.longClickFirstImage();
+  Future<bool> clickFirstMeaningfulLink() => bridge.clickFirstMeaningfulLink();
+  Future<bool> clickFirstFileCandidate() => bridge.clickFirstFileCandidate();
+  Future<bool> openNotifications() => bridge.openNotifications();
+  Future<bool> openRecents() => bridge.openRecents();
 
   void disable() {
     enabled = false;

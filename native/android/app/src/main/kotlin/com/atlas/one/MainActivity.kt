@@ -56,6 +56,11 @@ class MainActivity : FlutterActivity() {
                 "globalHome" -> result.success(AtlasAccessibilityService.instance?.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_HOME) ?: false)
                 "pressEnter" -> result.success(AtlasAccessibilityService.instance?.pressEnter() ?: false)
                 "pressTab" -> result.success(AtlasAccessibilityService.instance?.pressTab() ?: false)
+                "longClickFirstImage" -> result.success(AtlasAccessibilityService.instance?.longClickFirstImage() ?: false)
+                "clickFirstMeaningfulLink" -> result.success(AtlasAccessibilityService.instance?.clickFirstMeaningfulLink() ?: false)
+                "clickFirstFileCandidate" -> result.success(AtlasAccessibilityService.instance?.clickFirstFileCandidate() ?: false)
+                "openNotifications" -> result.success(AtlasAccessibilityService.instance?.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_NOTIFICATIONS) ?: false)
+                "openRecents" -> result.success(AtlasAccessibilityService.instance?.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_RECENTS) ?: false)
                 "revokeSensitivePermissions" -> {
                     revokeSensitivePermissions()
                     result.success(null)
