@@ -21,6 +21,9 @@ assert(html.includes('class="demo-eyes"') && html.includes('class="demo-mouth"')
 assert(legacy.includes('.demo-companion') && legacy.includes('.demo-eyes') && legacy.includes('demoFloat'));
 assert(css.includes('@media(max-width:760px)') && css.includes('.tutor-panel'));
 assert(kt.includes('AiChat.getInferenceEngine') && kt.includes('SpeechRecognizer.createSpeechRecognizer') && kt.includes('TextToSpeech'));
+// Regression: Bridge.installModel must target the Activity method explicitly.
+assert(kt.includes('this@MainActivity.installModel()'), 'installModel bridge must call MainActivity.installModel explicitly');
+assert(!/fun\s+installModel\s*\(\s*\)\s*=\s*runOnUiThread\s*\{\s*installModel\s*\(\s*\)/.test(kt), 'recursive installModel bridge found');
 assert(dl.includes('gemma-3-4b-it-Q4_0.gguf') && dl.includes('validateSHA256'));
 assert(yaml.includes('actions/upload-artifact@v4') && yaml.includes('app-debug.apk'));
 assert(!js.includes('fakeReply') && !js.includes('demoFallbackReply'));

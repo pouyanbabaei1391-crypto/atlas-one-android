@@ -104,7 +104,15 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
 
     inner class Bridge {
         @JavascriptInterface fun getStatus() = runOnUiThread { pushStatus() }
-        @JavascriptInterface fun installModel() = runOnUiThread { installModel() }
+        // Explicitly invoke the Activity method, not this JS bridge method.
+        // An unqualified installModel() here recursively resolves to Bridge.installModel(),
+        // causing a Kotlin type-inference recursion error at compile time.
+        @JavascriptInterface
+        fun installModel(): Unit {
+            this@MainActivity.runOnUiThread {
+                this@MainActivity.installModel()
+            }
+        }
         @JavascriptInterface fun importModel() = runOnUiThread { openModelPicker() }
         @JavascriptInterface fun ask(text: String, level: String, goal: String) = runOnUiThread {
             generate(text.take(1800).trim(), level.take(3), goal.take(100))
