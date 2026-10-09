@@ -1,14 +1,13 @@
-VELTRIX AI - ONE CLICK GITHUB UPLOAD
+VELTRIX AI — Fast Private English Tutor
 
-PRECONFIGURED REPOSITORY:
-https://github.com/pouyanbabaei1391-crypto/atlas-one-android
+Project Repository (preconfigured): https://github.com/pouyanbabaei1391-crypto/atlas-one-android
 
-1. Extract the full ZIP.
-2. Double-click VELTRIX-English-Tutor\UPDATE_GITHUB_WINDOWS.bat.
-3. Sign in to GitHub if Git Credential Manager requests browser authentication.
-4. Wait for GitHub Actions (VELTRIX English Tutor APK) to build.
-5. Download the APK at:
-https://github.com/pouyanbabaei1391-crypto/atlas-one-android/releases
+1. Extract the whole ZIP with EXTRACT ALL (not WinRAR preview).
+2. Double-click the outer UPDATE_GITHUB_WINDOWS.bat.
+3. Complete GitHub sign-in if prompted and wait for PUSH SUCCESSFUL.
+4. The APK exists only after a GREEN workflow at https://github.com/pouyanbabaei1391-crypto/atlas-one-android/actions
+5. Download VELTRIX-English-Tutor.apk from the run's Artifacts.
+6. Start app, choose Install MODEL or Import GGUF. Existing matching verified model in the same installed app is reused automatically.
 
-Important: GitHub needs build time. The APK only appears after a successful workflow.
-The script NEVER force pushes or changes unrelated Atlas One files.
+Note: signing certificate must remain stable for Android app updates to preserve private model data; see SIGNING_AND_UPDATES.md.
+Performance, security and CEFR outcomes are not guaranteed.

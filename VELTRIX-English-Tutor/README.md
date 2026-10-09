@@ -1,168 +1,42 @@
-## Windows uploader safety hotfix
+# VELTRIX AI — English Micro-Tutor (Fast, Private, 30-Day Sprint)
 
-**Always extract the complete ZIP first.** The root `UPDATE_GITHUB_WINDOWS.bat` now stops if the Android project is missing and never recursively calls itself. GitHub CLI, if installed, prompts browser authentication; otherwise Git Credential Manager should prompt when Git pushes. APK generation still depends on GitHub Actions build success.
+A fully source-available Android project based on the earlier VELTRIX English Tutor. It keeps the animated facial-expression companion and an extra-large responsive conversation canvas. The app has exactly two teaching parts per successful answer: **UPGRADE** (short sentence rewrite) and **FOCUS** (one word OR one collocation OR one grammar concept, with example and recall question).
 
----
+## What's changed
 
-# VELTRIX AI — English Intelligence
+- On-device model switched from 4B to **Qwen3-1.7B Q4_K_M** (roughly 1.28 GB model download). Expected to reduce RAM pressure and often latency, but **10x speed and equal quality are not demonstrated**; benchmark on the actual device. Underlying model name is not displayed in the UI.
+- The fast model is downloaded once, SHA-256 checked, then reused on each app launch and subsequent app update when **app data and signing identity are preserved**. Imported matching GGUF files can be selected with Android's file picker. Models stored privately by a different app are inaccessible due to Android sandboxing; the previous Gemma 4B is **not** interchangeable with the new 1.7B model.
+- Frontend deliberately minimal: animated face, large chat area, voice input, reply/Stop, compact one-time model setup, small pace signal. No XP, level pickers, settings dashboard, menus, gamification missions or seven verbose lesson sections.
+- Android WebView hardened: web content confined to packaged assets, network WebView requests blocked, file/content reads restricted, JavaScript bridge operations reduced to known native actions, ADB debugging of the WebView disabled. TLS/HTTPS-only model download, SHA-256 validation, backups disabled. This is a **security improvement, not an audited security guarantee**.
+- 30-day *exposure* syllabus contains 3,000 English vocabulary candidates, 1,000 academic/advanced collocation patterns, and 159 grammar topics in static offline data. The vocabulary candidates are advanced-targeted but **not independently CEFR-validated word-by-word**. The application records *introduced items*, not mastery, and suggests a catch-up schedule after a missed day.
 
-**A genuine Android project** with the VELTRIX ExperienceSpace robot, local on-device GGUF inference using the *official* `llama.cpp` Android JNI inference module, Android voice recognition and text-to-speech, adaptive learning prompts, and a GitHub Actions APK builder.
+## Critical learning reality
 
-Founder / brand concept: **Parham Babaei — VELTRIX AI**.
+Introducing 3,000 words + 1,000 collocations + 159 grammar topics in 30 days requires **4,159 micro lessons**, approximately **139 lessons per day** (plus reviews). This is an extreme exposure target and **does not certify C1/C2, even if every item is introduced**. A1 to C1/C2 in one month is not a valid promise. Content is intentionally one focus per message; users may need many messages or a longer plan. AI-generated explanations can make mistakes.
 
-> IMPORTANT: This ZIP contains SOURCE CODE and a CI build workflow. It does **not** contain a compiled, device-tested APK or a 2.4 GB model. Building requires Android SDK/NDK, Gradle and the official llama.cpp library to be downloaded. The GitHub workflow is provided but has NOT been executed in this environment. Do not claim a successful device test until GitHub Actions builds and you install the APK on a phone.
+## Model / privacy
 
-## 1. Features and architecture
+GGUF download: `https://huggingface.co/Antigma/Qwen3-1.7B-GGUF/resolve/main/qwen3-1.7b-q4_k_m.gguf` (Apache 2.0 based on model card), expected SHA-256 `a7f6720f68f4a4567ebf7e3257041dd0b72077b518efe56890aec3516b59b9de`. Private text inference happens entirely on-device; Android's OS speech recognition may rely on external services despite the offline-preferred flag. Install an on-device recognition service/language pack and offline TTS voice if full speech privacy is important. The app does not upload chat content to its own server.
 
-```text
-                        VELTRIX English Intelligence
-                        ┌────────────────────────────┐
- Voice → Android STT  ───▶ Intent + context prompt    │
- Typed text ─────────────▶                            │
-                        │ On-device MODEL            │
-                        │ Gemma 3 4B GGUF / llama.cpp │
-                        │ 1. Review & quiz grading   │
-                        │ 2. Correct every sentence  │
-                        │ 3. Advanced rewrite        │
-                        │ 4. Simple grammar lesson   │
-                        │ 5. 3 words/collocations    │
-                        │ 6. Guided practice         │
-                        │ 7. New quiz → next turn    │
-                        └─────────────┬──────────────┘
-                                      │
-                               Android native TTS
-                                      │
-                              VELTRIX speaks aloud
-```
+If the exact same fast model has already been installed and verified in this app's private storage, its download is skipped. For files in Downloads or elsewhere, use **Import GGUF**. An Android app cannot silently read another app's private model data.
 
-- Website-style dark graphite / teal design that reproduces the **original animated VELTRIX robot** from the earlier ExperienceSpace website. Mobile portrait responsive. CSS/SVG only — no internet-dependent graphics.
-- An interactive spoken / written practice loop, seven teaching cards per reply, quiz grading at the start of the following reply, CEFR self-selection, and training focus.
-- Persistent local XP and study streak **as engagement indicators** (not an objectively measured CEFR proficiency).
-- Private GGUF file in Android app storage and explicit opt-in download or user-file import. The model remains available after download without Ollama or cloud inference.
-- Official llama.cpp Android example **InferenceEngine** handles GGUF loading and streaming generation; its sources are fetched by the bootstrap script.
-- Android SpeechRecognizer (English preferred) and OS TextToSpeech. `EXTRA_PREFER_OFFLINE` is requested for STT, but recognition may still be cloud-assisted, depending on the phone's speech provider and downloaded speech packs. TTS voices may also need separate installation.
-- Stop processing and TTS, restart lesson (unload/reload GGUF to clear model KV cache), and reinstall after a failed model download.
-- Public interface uses only the term **MODEL** and the identity **VELTRIX AI**. Model details remain visible in this README for technical and license compliance.
+**Important:** GitHub Actions produces a **debug-signed APK**; GitHub runner signing keys may change between builds. Android may refuse in-place updates and uninstalling may erase private model data. For reliable updates retaining data and avoiding repeated downloads, set up your own persistent, secret release signing key. Never commit its password or the private keystore to the repository. See `SIGNING_AND_UPDATES.md`.
 
-## 2. Phone and model requirements
+## Build / GitHub
 
-- **Android 13+ (API 33+)**, **64-bit ARM** phone.
-- **8 GB RAM or more recommended**, 12 GB is safer. 4 GB parameter models may be too slow, overheat, or not load on older devices. Specific device compatibility is not verified.
-- At least **3 GB of free internal storage** for the download (in addition to room for Android system, app, and temporary files).
-- The app downloads (once) `unsloth/gemma-3-4b-it-GGUF / gemma-3-4b-it-Q4_0.gguf` from Hugging Face (approx **2.37 GB**), then checks SHA-256 before loading it. The quantized model weights are **NOT inside the APK**.
-- The downloaded GGUF hash is specified in `ModelDownloader.kt` to detect corrupt files. The model has its own license (Google Gemma); review model terms before distributing commercially.
+1. Right-click ZIP → **Extract All**. Never double-click the BAT inside WinRAR.
+2. Open the extracted top-level folder and run `UPDATE_GITHUB_WINDOWS.bat` on Windows with Git installed. It targets `https://github.com/pouyanbabaei1391-crypto/atlas-one-android` and adds VELTRIX in a dedicated folder; it avoids force pushes.
+3. GitHub Actions: workflow **VELTRIX English Tutor APK** builds the project, using the GitHub runner Android SDK/NDK, Java 17 and Gradle.
+4. Only **if the run turns green**, download `VELTRIX-English-Tutor.apk` from Artifacts; signing and compilation were **not executed end-to-end in this environment**.
+5. Install on ARM64 Android 13+ with sufficient free RAM and storage. In the app tap **Install MODEL** or **Import GGUF**.
 
-**Model source (manual import alternative):** https://huggingface.co/unsloth/gemma-3-4b-it-GGUF/blob/main/gemma-3-4b-it-Q4_0.gguf
+## Licensing and attribution
 
-**If Hugging Face cannot be reached from the phone:** download the above exact GGUF file on a computer, transfer it to the phone's Downloads folder, tap `Import GGUF` inside VELTRIX. The SHA-256 verification requires the correct exact file.
+- Qwen3-1.7B-GGUF model: Apache 2.0 model family, see https://huggingface.co/Qwen/Qwen3-1.7B-GGUF and https://huggingface.co/Antigma/Qwen3-1.7B-GGUF.
+- Vocabulary list: combined handpicked entries and original selection/ranking of candidate words derived during build from the installed **TextBlob** lexical lists and CMU pronunciation dictionary. It does not reproduce the Oxford or Cambridge proprietary CEFR word list or claim external validation.
+- Collocations: original manually grouped usage patterns; contextual judgment is required.
+- Grammar: original topic taxonomy; the explanations are generated at practice time, not a pre-reviewed exhaustive textbook.
 
-## 3. One-click GitHub upload and automatic APK build
+## What is not claimed
 
-**PRECONFIGURED DESTINATION:** https://github.com/pouyanbabaei1391-crypto/atlas-one-android
-
-1. Extract this ZIP, preserving its `VELTRIX-English-Tutor/` directory structure.
-2. Double-click **`UPDATE_GITHUB_WINDOWS.bat`**. You do **not** need to enter the GitHub repository address, your Git name/email or press Y to confirm. It is already preconfigured.
-3. The script clones your existing `atlas-one-android` default branch, writes only `VELTRIX-English-Tutor/` and `.github/workflows/veltrix-english-tutor.yml`, commits and pushes WITHOUT force-push and without changing Atlas One project files.
-4. This push automatically starts **Actions → VELTRIX English Tutor APK**. The GitHub workflow builds a debug ARM64 APK and uploads it both as an **Actions Artifact** and a new **GitHub Release (pre-release)**.
-5. Once Actions completes successfully, get **VELTRIX-English-Tutor.apk** at: https://github.com/pouyanbabaei1391-crypto/atlas-one-android/releases . You can also download the artifact on the workflow run page. The APK is produced *after* the GitHub workflow passes, not instantaneously when you double-click.
-6. Install APK on Android, then use **Install MODEL** inside the app for local Gemma GGUF inference.
-
-**Prerequisites:** Git for Windows, GitHub credentials with repository write access, working internet, GitHub Actions enabled, and permission for Actions to create releases. Git Credential Manager may open a browser sign-in **once**; no password or token is embedded in the BAT or PowerShell files. If the branch is protected, a direct push can be rejected rather than bypassing protection. The workflow has not been run against your GitHub account or on a physical Android device here. The APP build may need troubleshooting, especially its native llama.cpp dependency.
-
-Each successful upload writes a new build-request marker so the GitHub Actions workflow triggers even when the source code itself has not changed.
-
-## 4. Build in Android Studio / on a Windows computer
-
-1. Install Android Studio, JDK 17, Git, Android SDK 36, NDK `29.0.13113456`, and CMake `3.31.6`.
-2. In PowerShell, from the extracted project root:
-
-   ```powershell
-   .\scripts\bootstrap_llama.ps1
-   ```
-
-   This downloads the **official** llama.cpp repository at the **v0.6.0** release tag into the local `vendor` folder, which is intentionally excluded from this ZIP. Internet access is required to fetch sources and Gradle dependencies.
-
-3. Open the folder in Android Studio and wait for Gradle sync.
-4. Run the app on your ARM64 Android phone or build `:app:assembleDebug`.
-5. Find APK at `app/build/outputs/apk/debug/app-debug.apk`.
-
-Do not manually clone unrelated model runtime repositories: this project references the specific official Android library at `vendor/llama.cpp/examples/llama.android/lib`.
-
-## 5. Full teaching cycle
-
-Each message is sent to the model with a behavioral instruction template from `TutorPrompts.kt`:
-
-1. REVIEW — meaning and grade the previous quiz answer, if applicable.
-2. CORRECTION — corrected sentences, with “Already correct” when appropriate.
-3. UPGRADE — a more natural / advanced rewrite preserving meaning.
-4. GRAMMAR — one rule with a simple explanation and examples.
-5. VOCABULARY — exactly three words / collocations, short Persian gloss, usage, examples and one pronunciation tip.
-6. PRACTICE — a targeted drill.
-7. QUIZ — one new question and wait for the student's next answer.
-
-Example: `I go to school yesterday.`
-
-The answer is generated by the on-device language model. **It is not a fixed canned teaching response.** Outputs may occasionally break the seven-section format; the UI then displays the raw result and says it is unstructured. This is a prototype, not a validated pedagogy product.
-
-## 6. Limitations and honest expectations
-
-- A1 → C1/C2 **within one month cannot be guaranteed or expected for most learners**. Actual proficiency requires consistent practice, measured comprehension, writing, listening, and speaking over a long period. The levels in the interface are learner-selected, not a certification.
-- This does **NOT** fine-tune or train Gemma 3; it loads the existing instruction-tuned quantized model with a domain-specific teaching prompt.
-- Native STT depends on the installed Android recognizer and may use online recognition services. Local Gemma inference can work offline after installation.
-- Speech-to-text is not the same as phoneme-level pronunciation scoring. The app can correct **recognized text**, but does not provide validated accent or phonetic accuracy assessment.
-- Actual device performance, llama.cpp v0.6.0 Android library build, GGUF loading, and model fit in memory have **not been verified on a physical Android phone** in this environment. CI must pass before calling the app build complete.
-- The first start requires a large model download; storing and loading model weights on the device may be slow. Battery and heat matter.
-- Model instructions aim to cover all seven teaching stages, but generative outputs are not guaranteed correct; learners should double-check high-stakes exam material.
-- The code does not stream audio directly into a local STT model; it invokes the Android speech recognizer. There is no background microphone recording when the app is closed.
-
-## 7. Privacy and security
-
-No API keys. No default outbound LLM inference requests. The Android app makes network calls only when obtaining the GGUF model (and Android speech recognizer may make cloud calls depending on OS service). All lesson text goes through app-local model inference. The UI saves XP, selected CEFR self-level and training focus in its local WebView storage; it does not upload transcripts.
-
-The WebView JavaScript bridge is only loaded from the app's trusted `file:///android_asset/` pages, with external navigation blocked. Do not allow untrusted remote webpages to use this bridge.
-
-## 8. Contents
-
-```text
-VELTRIX-English-Tutor/
-├── .github/workflows/build-apk.yml   # GitHub Actions → APK artifact
-├── UPDATE_GITHUB_WINDOWS.bat          # Push repo updates to GitHub
-├── scripts/bootstrap_llama.sh/.ps1    # Official llama.cpp Android library setup
-├── settings.gradle.kts
-├── build.gradle.kts
-├── gradle/libs.versions.toml
-├── app/build.gradle.kts
-├── app/src/main/AndroidManifest.xml
-├── app/src/main/java/ai/veltrix/tutor/
-│   ├── MainActivity.kt                # WebView, local inference, STT, TTS
-│   ├── TutorPrompts.kt                # Seven-stage adaptive tutor prompt
-│   └── ModelDownloader.kt             # Resumable GGUF download and SHA-256
-├── app/src/main/assets/
-│   ├── index.html                     # ExperienceSpace learning UI
-│   ├── legacy-visual.css              # Preserved VELTRIX robot animation
-│   ├── tutor.css                      # Responsive mobile app UI
-│   └── tutor.js                       # UI and native-event layer
-└── tests/                              # Source/UI smoke tests
-```
-
-Source references: https://github.com/ggml-org/llama.cpp (v0.6.0), https://huggingface.co/unsloth/gemma-3-4b-it-GGUF . License notices for these external works remain under their respective repositories and model pages.
-
-
-## One-click build reliability update (2026-10-09)
-Each click creates `LAST_BUILD_REQUEST.txt`, thus a fresh GitHub push triggers the dedicated workflow even when source content is unchanged. Source upload does not itself compile APK. The optional GitHub CLI monitor watches the build and downloads the Actions artifact to `VELTRIX_APK_DOWNLOAD`; without gh, follow the Actions link. The workflow uploads an APK artifact after successful compilation and optionally creates a Release. Failures produce an actionable `VELTRIX-Build-Error-Log` artifact.
-
-
-## GitHub CI diagnostics update
-When the APK build fails, check the first failing GitHub Actions step. If it reached Android toolchain or Gradle, download the `VELTRIX-FAILURE-DIAGNOSTICS` artifact. Build completion has not been verified in this environment.
-
-
-## 2026-10-09 Android SDK Workflow Fix
-
-The GitHub-hosted workflow now bypasses the previous `android-actions/setup-android@v3` license failure and uses the runner SDK with explicit installation and diagnostic logs. The release artifact is named `VELTRIX-English-Tutor.apk`. Compiled APK output is **not** shipped in this source ZIP.
-
-
-## 2026-10-09: ARM64 build repairs
-
-This package fixes upstream llama.cpp native ABI to ARM64-only, constrains Gradle/native parallelism on GitHub runners, and prints a concise actionable **first compiler error** in the GitHub Actions job summary. It retains real on-device inference; it does not replace the model with a simulated response. The full GitHub build is not verified until the workflow reports success.
-
-If the build fails, open the run summary and copy **VELTRIX actual compile error** or download the `VELTRIX-FAILURE-DIAGNOSTICS` artifact. The screenshot supplied did not show the precise Gradle error text, so other compiler issues may remain.
+No actual APK binary is included. No independently verified 10x speedup, complete security audit, certified CEFR progression, stable updater key or correctness guarantee. JavaScript demo without the APK can show the interface, but it cannot run the model.

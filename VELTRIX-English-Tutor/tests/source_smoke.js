@@ -1,30 +1,24 @@
-'use strict';
-const fs=require('node:fs');const assert=require('node:assert/strict');const path=require('node:path');
-const root=path.resolve(__dirname,'..');
-const read=p=>fs.readFileSync(path.join(root,p),'utf8');
-const html=read('app/src/main/assets/index.html');
-const css=read('app/src/main/assets/tutor.css');
-const legacy=read('app/src/main/assets/legacy-visual.css');
-const js=read('app/src/main/assets/tutor.js');
-const kt=read('app/src/main/java/ai/veltrix/tutor/MainActivity.kt');
+const fs=require('fs');const assert=require('node:assert/strict');const path=require('path');
+const base=path.resolve(__dirname,'..');const read=p=>fs.readFileSync(path.join(base,p),'utf8');
+const html=read('app/src/main/assets/index.html'),css=read('app/src/main/assets/tutor.css'),js=read('app/src/main/assets/tutor.js');
+const main=read('app/src/main/java/ai/veltrix/tutor/MainActivity.kt'),dl=read('app/src/main/java/ai/veltrix/tutor/ModelDownloader.kt');
 const prompt=read('app/src/main/java/ai/veltrix/tutor/TutorPrompts.kt');
-const dl=read('app/src/main/java/ai/veltrix/tutor/ModelDownloader.kt');
-const yaml=read('.github/workflows/build-apk.yml');
-for(const id of ['demo-companion','tutor-log','input-form','record-button','audio-button','install-model','import-model','goal-options','learner-level']){
- assert(html.includes(`id="${id}"`),`missing UI component ${id}`);
+const data=JSON.parse(read('app/src/main/assets/curriculum.json'));
+assert.equal(data.words.length,3000);assert.equal(data.collocations.length,1000);assert.equal(data.grammar.length,159);
+for(const key of ['words','collocations','grammar']){
+ assert.equal(new Set(data[key].map(x=>x.id)).size,data[key].length);
+ assert.equal(new Set(data[key].map(x=>x.term||x.title)).size,data[key].length);
 }
-for(const s of ['REVIEW','CORRECTION','UPGRADE','GRAMMAR','VOCABULARY','PRACTICE','QUIZ']){
- assert(prompt.includes(`${s}:`),`missing teaching stage ${s}`);
- assert(js.includes(s),`missing UI rendering stage ${s}`);
-}
-assert(html.includes('class="demo-eyes"') && html.includes('class="demo-mouth"'));
-assert(legacy.includes('.demo-companion') && legacy.includes('.demo-eyes') && legacy.includes('demoFloat'));
-assert(css.includes('@media(max-width:760px)') && css.includes('.tutor-panel'));
-assert(kt.includes('AiChat.getInferenceEngine') && kt.includes('SpeechRecognizer.createSpeechRecognizer') && kt.includes('TextToSpeech'));
-// Regression: Bridge.installModel must target the Activity method explicitly.
-assert(kt.includes('this@MainActivity.installModel()'), 'installModel bridge must call MainActivity.installModel explicitly');
-assert(!/fun\s+installModel\s*\(\s*\)\s*=\s*runOnUiThread\s*\{\s*installModel\s*\(\s*\)/.test(kt), 'recursive installModel bridge found');
-assert(dl.includes('gemma-3-4b-it-Q4_0.gguf') && dl.includes('validateSHA256'));
-assert(yaml.includes('actions/upload-artifact@v4') && yaml.includes('app-debug.apk'));
-assert(!js.includes('fakeReply') && !js.includes('demoFallbackReply'));
-console.log('PASS: all 11 UI controls, 7 teaching stages, robot styling, responsive CSS, real inference/voice bridges, SHA256, APK workflow');
+for(const id of ['demo-companion','conversation','message-input','mic-button','send-button','tts-toggle','stop-button','model-setup','pace-alert','install-model','import-model'])assert(html.includes('id="'+id+'"'),'missing '+id);
+for(const h of ['UPGRADE:','FOCUS:'])assert(prompt.includes(h));
+for(const h of ['REVIEW:','CORRECTION:','GRAMMAR:','VOCABULARY:','PRACTICE:','QUIZ:'])assert(!prompt.includes(h),'old verbose prompt remains');
+assert(main.includes('this@MainActivity.installModel()'));
+assert(main.includes('settings.allowFileAccess = false')&&main.includes('settings.blockNetworkLoads = true'));
+assert(main.includes('blankBlockedResource()')&&main.includes('WebView.setWebContentsDebuggingEnabled(false)'));
+assert(dl.includes('Qwen3-1.7B-GGUF')&&dl.includes('validateSHA256'));
+assert(dl.includes('veltrix-fast-qwen3-1_7b-q4km.gguf'));
+assert(js.includes('pickFocus')&&js.includes('markIntroduced')&&js.includes('renderLesson'));
+assert(!js.includes('innerHTML')&&!js.includes('eval(')&&!js.includes('fakeReply'));
+assert(css.includes('@media(max-width:700px)'));
+const wf=read('deploy/veltrix-english-tutor.yml');assert(wf.includes('VELTRIX-English-Tutor.apk'));
+console.log('PASS: corpus 3000/1000/159, 2-section tutor, hardened local bridge, model digest, 30-day scheduler, mobile layout, APK workflow');

@@ -13,19 +13,19 @@ import java.security.MessageDigest
 /** Explicit, resumable in-app download. No model weights shipped with the APK. */
 object ModelDownloader {
     private const val DOWNLOAD_URL =
-        "https://huggingface.co/unsloth/gemma-3-4b-it-GGUF/resolve/main/gemma-3-4b-it-Q4_0.gguf"
-    private const val FILE_SHA256 = "a3aa2db653fc95923d76e5d9039861d56f10dfb3c906afe6bcf8f72340ef2cbf"
-    private const val MODEL_FILE = "veltrix-model.gguf"
-    private const val MIN_EXPECTED_BYTES = 2_000_000_000L
+        "https://huggingface.co/Antigma/Qwen3-1.7B-GGUF/resolve/main/qwen3-1.7b-q4_k_m.gguf"
+    private const val FILE_SHA256 = "a7f6720f68f4a4567ebf7e3257041dd0b72077b518efe56890aec3516b59b9de"
+    private const val MODEL_FILE = "veltrix-fast-qwen3-1_7b-q4km.gguf"
+    private const val MIN_EXPECTED_BYTES = 1_100_000_000L
 
     fun modelFile(context: Context): File = File(File(context.filesDir, "models").apply { mkdirs() }, MODEL_FILE)
     fun downloaded(context: Context): Boolean {
         val file = modelFile(context)
         return file.isFile && file.length() > MIN_EXPECTED_BYTES &&
-            context.getSharedPreferences("model", Context.MODE_PRIVATE).getBoolean("verified", false)
+            context.getSharedPreferences("model_fast_v2", Context.MODE_PRIVATE).getBoolean("verified", false)
     }
-    fun resetVerified(context: Context) = context.getSharedPreferences("model", Context.MODE_PRIVATE).edit().putBoolean("verified", false).apply()
-    private fun markVerified(context: Context) = context.getSharedPreferences("model", Context.MODE_PRIVATE).edit().putBoolean("verified", true).apply()
+    fun resetVerified(context: Context) = context.getSharedPreferences("model_fast_v2", Context.MODE_PRIVATE).edit().putBoolean("verified", false).apply()
+    private fun markVerified(context: Context) = context.getSharedPreferences("model_fast_v2", Context.MODE_PRIVATE).edit().putBoolean("verified", true).apply()
 
     fun validateSHA256(file: File): Boolean {
         val digest = MessageDigest.getInstance("SHA-256")
@@ -47,7 +47,7 @@ object ModelDownloader {
         resetVerified(context)
         val tmp = File(dst.parentFile, "$MODEL_FILE.part")
         val space = dst.parentFile?.usableSpace ?: 0L
-        if (space < 3_000_000_000L) throw IOException("At least 3 GB free internal storage required to download the model.")
+        if (space < 2_000_000_000L) throw IOException("At least 2 GB free internal storage required to download the model.")
         var error: Exception? = null
         repeat(3) { attempt ->
             try {
@@ -61,6 +61,7 @@ object ModelDownloader {
                 }
                 try {
                     conn.connect()
+                    if (conn.url.protocol != "https") throw IOException("Insecure model download redirect blocked")
                     val code = conn.responseCode
                     if (code !in listOf(200, 206)) throw IOException("Model server returned HTTP $code")
                     // A server may ignore Range. Restart rather than silently corrupting the file.
@@ -87,6 +88,7 @@ object ModelDownloader {
                         }
                     }
                     progress(bytes, total)
+                    if (bytes > 1_600_000_000L) throw IOException("Model download exceeded expected maximum size")
                     if (total > 0 && bytes != total) throw IOException("Incomplete model download ($bytes / $total bytes)")
                     if (bytes < MIN_EXPECTED_BYTES) throw IOException("Model file is unexpectedly small")
                     if (!validateSHA256(tmp)) { tmp.delete(); throw IOException("SHA-256 mismatch. Download removed; retry.") }
@@ -107,7 +109,7 @@ object ModelDownloader {
         if (downloaded(context)) return
         val dst = modelFile(context)
         resetVerified(context)
-        if ((dst.parentFile?.usableSpace ?: 0L) < 3_000_000_000L) throw IOException("At least 3 GB free internal storage required")
+        if ((dst.parentFile?.usableSpace ?: 0L) < 2_000_000_000L) throw IOException("At least 2 GB free internal storage required")
         val tmp = File(dst.parentFile, "$MODEL_FILE.part")
         tmp.delete()
         var copied = 0L

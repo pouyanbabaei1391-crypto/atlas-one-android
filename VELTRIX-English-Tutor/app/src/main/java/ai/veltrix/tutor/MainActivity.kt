@@ -16,6 +16,8 @@ import android.webkit.JavascriptInterface
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.webkit.WebResourceResponse
+import java.io.ByteArrayInputStream
 import android.webkit.WebChromeClient
 import android.view.View
 import com.arm.aichat.AiChat
@@ -62,16 +64,28 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
             setBackgroundColor(Color.rgb(8, 13, 20))
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
-            settings.allowFileAccess = true
+            settings.allowFileAccess = false
+            settings.allowContentAccess = false
+            settings.blockNetworkLoads = true
+            settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
+            settings.safeBrowsingEnabled = true
             settings.allowFileAccessFromFileURLs = false
             settings.allowUniversalAccessFromFileURLs = false
             settings.javaScriptCanOpenWindowsAutomatically = false
             settings.setSupportMultipleWindows(false)
+            WebView.setWebContentsDebuggingEnabled(false)
             webChromeClient = WebChromeClient()
             webViewClient = object : WebViewClient() {
                 override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                     // Only first-party packaged screens exist; never navigate to untrusted pages with JS bridge.
                     return request?.url?.toString()?.startsWith("file:///android_asset/") != true
+                }
+                override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
+                    val uri = request?.url ?: return blankBlockedResource()
+                    if (uri.scheme == "file" && uri.path?.startsWith("/android_asset/") == true) {
+                        return super.shouldInterceptRequest(view, request)
+                    }
+                    return blankBlockedResource()
                 }
                 override fun onPageFinished(view: WebView?, url: String?) {
                     webLoaded = true
@@ -102,6 +116,9 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         }
     }
 
+    private fun blankBlockedResource(): WebResourceResponse =
+        WebResourceResponse("text/plain", "UTF-8", ByteArrayInputStream(ByteArray(0)))
+
     inner class Bridge {
         @JavascriptInterface fun getStatus() = runOnUiThread { pushStatus() }
         // Explicitly invoke the Activity method, not this JS bridge method.
@@ -114,8 +131,10 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
             }
         }
         @JavascriptInterface fun importModel() = runOnUiThread { openModelPicker() }
-        @JavascriptInterface fun ask(text: String, level: String, goal: String) = runOnUiThread {
-            generate(text.take(1800).trim(), level.take(3), goal.take(100))
+        @JavascriptInterface fun ask(text: String, kind: String, term: String, level: String) = runOnUiThread {
+            // Content is student-provided, never a native command. Strict length/type limits.
+            val safeKind = if (kind in setOf("word", "collocation", "grammar")) kind else "grammar"
+            generate(text.take(1200).trim(), safeKind, term.take(90).trim(), level.take(2))
         }
         @JavascriptInterface fun beginVoice() = runOnUiThread { startVoice() }
         @JavascriptInterface fun stopAll() = runOnUiThread { stopAllTasks() }
@@ -149,7 +168,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         if (ModelDownloader.downloaded(this)) { loadModel(); return }
         isDownloading = true
         modelInstalling = true
-        send("model_progress", "percent" to 0, "message" to "Downloading local intelligence model (about 2.4 GB)…")
+        send("model_progress", "percent" to 0, "message" to "Downloading private MODEL (about 1.28 GB)…")
         scope.launch {
             try {
                 withContext(Dispatchers.IO) {
@@ -173,7 +192,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
     private fun openModelPicker() {
         if (isDownloading || modelInstalling) return
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-            type = "application/octet-stream"
+            type = "*/*" // SHA-256 verification rejects any non-matching file
             addCategory(Intent.CATEGORY_OPENABLE)
         }
         startActivityForResult(intent, 5431)
@@ -229,7 +248,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         }
     }
 
-    private fun generate(message: String, level: String, goal: String) {
+    private fun generate(message: String, focusKind: String, focusTerm: String, level: String) {
         if (message.isEmpty()) return
         if (!modelReady || engine == null) {
             send("error", "message" to "First install and load the local model on this phone.")
@@ -241,8 +260,8 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         }
         tts?.stop()
         val selectedLevel = if (level in listOf("A1", "A2", "B1", "B2", "C1", "C2")) level else "A1"
-        val prompt = if (firstPrompt) TutorPrompts.firstTurn(message, selectedLevel, goal)
-                     else TutorPrompts.nextTurn(message, selectedLevel, goal)
+        val prompt = if (firstPrompt) TutorPrompts.firstTurn(message, selectedLevel, focusKind, focusTerm)
+                     else TutorPrompts.nextTurn(message, selectedLevel, focusKind, focusTerm)
         firstPrompt = false
         send("robot", "state" to "thinking")
         send("generation_start", "original" to message)
@@ -250,7 +269,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
             val reply = StringBuilder()
             var lastUi = SystemClock.elapsedRealtime()
             try {
-                engine!!.sendUserPrompt(prompt, 930).collect { token ->
+                engine!!.sendUserPrompt(prompt, 340).collect { token ->
                     reply.append(token)
                     val now = SystemClock.elapsedRealtime()
                     if (now - lastUi > 130L) {
