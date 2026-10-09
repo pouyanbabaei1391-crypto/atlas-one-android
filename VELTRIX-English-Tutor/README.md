@@ -150,3 +150,12 @@ Source references: https://github.com/ggml-org/llama.cpp (v0.6.0), https://huggi
 
 ## One-click build reliability update (2026-10-09)
 Each click creates `LAST_BUILD_REQUEST.txt`, thus a fresh GitHub push triggers the dedicated workflow even when source content is unchanged. Source upload does not itself compile APK. The optional GitHub CLI monitor watches the build and downloads the Actions artifact to `VELTRIX_APK_DOWNLOAD`; without gh, follow the Actions link. The workflow uploads an APK artifact after successful compilation and optionally creates a Release. Failures produce an actionable `VELTRIX-Build-Error-Log` artifact.
+
+
+## GitHub CI diagnostics update
+When the APK build fails, check the first failing GitHub Actions step. If it reached Android toolchain or Gradle, download the `VELTRIX-FAILURE-DIAGNOSTICS` artifact. Build completion has not been verified in this environment.
+
+
+## 2026-10-09 Android SDK Workflow Fix
+
+The GitHub-hosted workflow now bypasses the previous `android-actions/setup-android@v3` license failure and uses the runner SDK with explicit installation and diagnostic logs. The release artifact is named `VELTRIX-English-Tutor.apk`. Compiled APK output is **not** shipped in this source ZIP.

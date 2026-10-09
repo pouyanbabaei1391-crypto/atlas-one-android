@@ -58,9 +58,8 @@ function WaitForGitHubApk([string]$sha) {
     New-Item -ItemType Directory -Force -Path $output | Out-Null
     & gh run download $id --repo $repo --name 'VELTRIX-English-Tutor-Android-APK' --dir $output
     if ($LASTEXITCODE -ne 0) { throw 'Build succeeded but artifact download failed. Find APK in Actions > Artifacts.' }
-    $apk = Join-Path $output 'app-debug.apk'
-    if (-not (Test-Path $apk)) { throw 'Build succeeded but app-debug.apk was not found in the downloaded artifact.' }
-    Copy-Item $apk (Join-Path $output 'VELTRIX-English-Tutor.apk') -Force
+    $apk = Join-Path $output 'VELTRIX-English-Tutor.apk'
+    if (-not (Test-Path $apk)) { throw 'Build succeeded but VELTRIX-English-Tutor.apk was not found in the downloaded artifact.' }
     Write-Host ('SUCCESS: Android APK downloaded to ' + (Join-Path $output 'VELTRIX-English-Tutor.apk')) -ForegroundColor Green
     Start-Process explorer.exe $output
 }

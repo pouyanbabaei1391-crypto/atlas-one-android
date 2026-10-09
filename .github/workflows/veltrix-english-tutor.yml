@@ -18,71 +18,169 @@ jobs:
   build-apk:
     name: Build VELTRIX Android APK
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    timeout-minutes: 120
     defaults:
       run:
         shell: bash
         working-directory: VELTRIX-English-Tutor
+    env:
+      CMAKE_BUILD_PARALLEL_LEVEL: '2'
+      GRADLE_OPTS: '-Dorg.gradle.jvmargs=-Xmx3g -Dorg.gradle.workers.max=2'
     steps:
-      - name: Checkout current repository
+      - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Preflight and source location
+        run: |
+          set -euo pipefail
+          echo 'stage=preflight' > veltrix-build-stage.txt
+          echo "runner=$(uname -a)"
+          echo "repository=${{ github.repository }}"
+          echo "commit=${{ github.sha }}"
+          test -f app/build.gradle.kts || { echo 'ERROR: app/build.gradle.kts is missing'; exit 1; }
+          test -f scripts/bootstrap_llama.sh || { echo 'ERROR: bootstrap_llama.sh is missing'; exit 1; }
+          echo 'VELTRIX project source located.'
+
       - name: Set up Java 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
-      - name: Install Android tools
-        uses: android-actions/setup-android@v3
-      - name: Install Android SDK and native compiler
+
+      # The old android-actions/setup-android@v3 failed while accepting SDK
+      # licenses. Use GitHub runner SDK directly and log each command. This
+      # intentionally does NOT depend on setup-android.
+      - name: Install Android SDK tools (runner-native, with diagnostics)
         run: |
-          sdkmanager --install 'platforms;android-36' 'build-tools;36.0.0' 'ndk;29.0.13113456' 'cmake;3.31.6'
-      - name: Fetch pinned official llama.cpp Android source
-        run: bash scripts/bootstrap_llama.sh
-      - name: Set up Gradle
+          set -euo pipefail
+          echo 'stage=install-android-toolchain' > veltrix-build-stage.txt
+          sdk="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          echo "Using Android SDK: $sdk"
+          test -d "$sdk" || { echo 'ERROR: GitHub runner Android SDK path not found'; exit 1; }
+          echo "ANDROID_HOME=$sdk" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$sdk" >> "$GITHUB_ENV"
+          java -version
+
+          # Prefer available SDK command-line tools. If missing, install the
+          # Google-published tools rather than invoking the failing action.
+          sdkmgr=''
+          for candidate in "$sdk"/cmdline-tools/latest/bin/sdkmanager "$sdk"/cmdline-tools/*/bin/sdkmanager; do
+            if [[ -x "$candidate" ]]; then sdkmgr="$candidate"; break; fi
+          done
+          if [[ -z "$sdkmgr" ]]; then
+            echo 'No preinstalled sdkmanager; bootstrapping official command-line tools.'
+            curl --fail --location --retry 3 --retry-delay 3 \
+              'https://dl.google.com/android/repository/commandlinetools-linux-15859902_latest.zip' \
+              --output /tmp/veltrix-cmdline-tools.zip
+            mkdir -p "$sdk/cmdline-tools/latest"
+            mkdir -p /tmp/veltrix-sdk-unpacked
+            unzip -q /tmp/veltrix-cmdline-tools.zip -d /tmp/veltrix-sdk-unpacked
+            cp -a /tmp/veltrix-sdk-unpacked/cmdline-tools/. "$sdk/cmdline-tools/latest/"
+            sdkmgr="$sdk/cmdline-tools/latest/bin/sdkmanager"
+          fi
+          test -x "$sdkmgr" || { echo 'ERROR: sdkmanager unavailable'; exit 1; }
+          echo "SDKMANAGER=$sdkmgr"
+          "$sdkmgr" --version
+          echo "$(dirname "$sdkmgr")" >> "$GITHUB_PATH"
+
+          # yes normally exits 141 (SIGPIPE) after sdkmanager finishes. Check
+          # the sdkmanager exit status, not the yes exit status.
+          set +e
+          yes | "$sdkmgr" --sdk_root="$sdk" --licenses > veltrix-sdk-licenses.log 2>&1
+          license_rc=${PIPESTATUS[1]}
+          set -e
+          if [[ "$license_rc" -ne 0 ]]; then
+            echo "ERROR: sdkmanager --licenses failed with exit $license_rc"
+            tail -n 90 veltrix-sdk-licenses.log
+            exit "$license_rc"
+          fi
+          echo 'SDK licenses processed.'
+          echo 'Installing Android platform 36, build tools, NDK and CMake...'
+          "$sdkmgr" --sdk_root="$sdk" --install \
+            'platforms;android-36' 'build-tools;36.0.0' \
+            'ndk;29.0.13113456' 'cmake;3.31.6' \
+            2>&1 | tee veltrix-sdk-install.log
+          test -d "$sdk/platforms/android-36" || { echo 'ERROR: Android platform 36 missing'; exit 1; }
+          test -d "$sdk/ndk/29.0.13113456" || { echo 'ERROR: NDK 29.0.13113456 missing'; exit 1; }
+          test -d "$sdk/cmake/3.31.6" || { echo 'ERROR: CMake 3.31.6 missing'; exit 1; }
+          echo 'Android build prerequisites installed.'
+
+      - name: Get official Android inference library
+        run: |
+          set -euo pipefail
+          echo 'stage=download-llama-cpp' > veltrix-build-stage.txt
+          bash scripts/bootstrap_llama.sh 2>&1 | tee veltrix-native-download.log
+          test -f vendor/llama.cpp/examples/llama.android/lib/build.gradle.kts
+
+      - name: Set up Gradle 8.13
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.13'
-      - name: Check VELTRIX source and JavaScript
+
+      - name: Validate JS and source
         run: |
+          set -euo pipefail
+          echo 'stage=source-check' > veltrix-build-stage.txt
           node tests/source_smoke.js
           node --check app/src/main/assets/tutor.js
-      - name: Compile and package ARM64 debug APK
+          gradle --version
+
+      - name: Compile Android APK (ARM64)
         run: |
-          set -o pipefail
-          gradle --no-daemon :app:assembleDebug --stacktrace 2>&1 | tee veltrix-gradle-build.log
-      - name: Upload APK to Actions Artifacts
+          set -euo pipefail
+          echo 'stage=gradle-compile' > veltrix-build-stage.txt
+          gradle --no-daemon --max-workers=2 :app:assembleDebug --stacktrace 2>&1 | tee veltrix-gradle-build.log
+
+      - name: Verify APK exists
+        run: |
+          set -euo pipefail
+          echo 'stage=verify-apk' > veltrix-build-stage.txt
+          test -s app/build/outputs/apk/debug/app-debug.apk || { echo 'ERROR: Gradle did not produce an APK'; exit 1; }
+          ls -lh app/build/outputs/apk/debug/app-debug.apk
+          mkdir -p apk-release
+          cp app/build/outputs/apk/debug/app-debug.apk apk-release/VELTRIX-English-Tutor.apk
+          echo 'APK found and renamed successfully.'
+
+      - name: Upload debug-signed APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: VELTRIX-English-Tutor-Android-APK
-          path: VELTRIX-English-Tutor/app/build/outputs/apk/debug/app-debug.apk
+          path: VELTRIX-English-Tutor/apk-release/VELTRIX-English-Tutor.apk
           if-no-files-found: error
           retention-days: 30
-      - name: Make a downloadable GitHub Release (optional)
+
+      - name: Publish downloadable prerelease
         if: success()
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-          RUN_ID: ${{ github.run_id }}
-          SHA: ${{ github.sha }}
+          GH_REPO: ${{ github.repository }}
         run: |
-          gh release create "veltrix-tutor-${RUN_ID}" \
-            "app/build/outputs/apk/debug/app-debug.apk#VELTRIX-English-Tutor.apk" \
-            --repo "$REPO" --target "$SHA" \
-            --title "VELTRIX English Tutor APK | Build ${RUN_ID}" \
-            --notes "Debug ARM64 APK built from commit ${SHA}. On-device model must be installed separately. Compatibility not yet device-verified." \
-            --prerelease
-      - name: Upload Gradle error log on failure
+          gh release create "veltrix-tutor-${{ github.run_id }}" \
+            "apk-release/VELTRIX-English-Tutor.apk#VELTRIX-English-Tutor.apk" \
+            --target "${{ github.sha }}" --prerelease \
+            --title "VELTRIX English Tutor APK | Build ${{ github.run_id }}" \
+            --notes 'Debug APK; model is downloaded in the app. Device functionality has not been verified.'
+
+      - name: Upload diagnostics even when a step fails
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: VELTRIX-Build-Error-Log
-          path: VELTRIX-English-Tutor/veltrix-gradle-build.log
-          if-no-files-found: ignore
-      - name: Summarize APK location
+          name: VELTRIX-FAILURE-DIAGNOSTICS
+          path: |
+            VELTRIX-English-Tutor/veltrix-build-stage.txt
+            VELTRIX-English-Tutor/veltrix-sdk-install.log
+            VELTRIX-English-Tutor/veltrix-sdk-licenses.log
+            VELTRIX-English-Tutor/veltrix-native-download.log
+            VELTRIX-English-Tutor/veltrix-gradle-build.log
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Give clear troubleshooting instructions
         if: always()
         run: |
-          echo '### VELTRIX AI English Tutor' >> "$GITHUB_STEP_SUMMARY"
-          echo 'After successful compilation, open **Actions → the run → Artifacts** and download **VELTRIX-English-Tutor-Android-APK**.' >> "$GITHUB_STEP_SUMMARY"
-          echo 'The release link is optional and requires repository permission to create releases.' >> "$GITHUB_STEP_SUMMARY"
-          echo 'If the build fails, open the failed Compile step or download VELTRIX-Build-Error-Log.' >> "$GITHUB_STEP_SUMMARY"
+          echo '### VELTRIX AI English Tutor APK' >> "$GITHUB_STEP_SUMMARY"
+          echo 'If green: download artifact **VELTRIX-English-Tutor-Android-APK** from this run.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'If red: click the run, open the first failed step, and copy the actual error text.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Additional logs, when available: **VELTRIX-FAILURE-DIAGNOSTICS** artifact.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'A red run never produces a verified APK.' >> "$GITHUB_STEP_SUMMARY"
