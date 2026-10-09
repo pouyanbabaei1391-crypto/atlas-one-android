@@ -1,0 +1,88 @@
+name: VELTRIX English Tutor APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'VELTRIX-English-Tutor/**'
+      - '.github/workflows/veltrix-english-tutor.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: veltrix-android-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-apk:
+    name: Build VELTRIX Android APK
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: bash
+        working-directory: VELTRIX-English-Tutor
+    steps:
+      - name: Checkout current repository
+        uses: actions/checkout@v4
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android tools
+        uses: android-actions/setup-android@v3
+      - name: Install Android SDK and native compiler
+        run: |
+          sdkmanager --install 'platforms;android-36' 'build-tools;36.0.0' 'ndk;29.0.13113456' 'cmake;3.31.6'
+      - name: Fetch pinned official llama.cpp Android source
+        run: bash scripts/bootstrap_llama.sh
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Check VELTRIX source and JavaScript
+        run: |
+          node tests/source_smoke.js
+          node --check app/src/main/assets/tutor.js
+      - name: Compile and package ARM64 debug APK
+        run: |
+          set -o pipefail
+          gradle --no-daemon :app:assembleDebug --stacktrace 2>&1 | tee veltrix-gradle-build.log
+      - name: Upload APK to Actions Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: VELTRIX-English-Tutor-Android-APK
+          path: VELTRIX-English-Tutor/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30
+      - name: Make a downloadable GitHub Release (optional)
+        if: success()
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          SHA: ${{ github.sha }}
+        run: |
+          gh release create "veltrix-tutor-${RUN_ID}" \
+            "app/build/outputs/apk/debug/app-debug.apk#VELTRIX-English-Tutor.apk" \
+            --repo "$REPO" --target "$SHA" \
+            --title "VELTRIX English Tutor APK | Build ${RUN_ID}" \
+            --notes "Debug ARM64 APK built from commit ${SHA}. On-device model must be installed separately. Compatibility not yet device-verified." \
+            --prerelease
+      - name: Upload Gradle error log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: VELTRIX-Build-Error-Log
+          path: VELTRIX-English-Tutor/veltrix-gradle-build.log
+          if-no-files-found: ignore
+      - name: Summarize APK location
+        if: always()
+        run: |
+          echo '### VELTRIX AI English Tutor' >> "$GITHUB_STEP_SUMMARY"
+          echo 'After successful compilation, open **Actions → the run → Artifacts** and download **VELTRIX-English-Tutor-Android-APK**.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'The release link is optional and requires repository permission to create releases.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'If the build fails, open the failed Compile step or download VELTRIX-Build-Error-Log.' >> "$GITHUB_STEP_SUMMARY"

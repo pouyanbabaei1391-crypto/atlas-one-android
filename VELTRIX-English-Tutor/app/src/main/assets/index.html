@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#0a1018" />
+  <meta name="description" content="VELTRIX AI English Tutor. A speaking companion powered by private on-device intelligence." />
+  <title>VELTRIX AI · English Intelligence</title>
+  <link rel="stylesheet" href="legacy-visual.css" />
+  <link rel="stylesheet" href="tutor.css" />
+</head>
+<body>
+<div class="ambient-grain" aria-hidden="true"></div>
+<div class="vl-watermark" aria-hidden="true">VELTRIX</div>
+<div class="app-shell">
+  <header class="app-header">
+    <div class="logo-lockup"><div class="logo-orb">V<span>●</span></div><div><strong>VELTRIX <b>AI</b></strong><small>ENGLISH INTELLIGENCE</small></div></div>
+    <div class="header-right"><span class="status-dot" id="global-dot"></span><span id="global-status">MODEL SETUP</span><span class="header-tag">PERSONAL LEARNING SYSTEM</span></div>
+  </header>
+  <div class="program-ribbon" aria-label="Your learning program">
+    <span><i class="ribbon-led"></i> <strong>VOICE-FIRST ENGLISH TUTOR</strong></span>
+    <span class="ribbon-break"></span>
+    <span>VELTRIX / EXPERIENCE SPACE</span>
+    <span class="ribbon-extra">ADAPTIVE LEARNING · LOCAL INTELLIGENCE</span>
+  </div>
+
+  <main class="tutor-stage" id="main">
+    <section class="demo-visual" aria-label="Animated VELTRIX AI companion">
+      <div class="demo-light-tracks" aria-hidden="true"><i></i><i></i><i></i></div>
+      <div class="demo-scene-label"><span>VELTRIX / IMMERSIVE LEARNING</span><span id="demo-scene-status">IDLE</span></div>
+      <div class="demo-device-stage" id="demo-device-stage">
+        <div class="demo-orbit orbit-a"></div><div class="demo-orbit orbit-b"></div><div class="demo-orbit orbit-c"></div>
+        <div class="demo-device-shadow"></div>
+        <div class="demo-companion" id="demo-companion" data-expression="idle">
+          <div class="demo-head-gloss"></div>
+          <div class="demo-faceplate">
+            <div class="demo-brow left"></div><div class="demo-brow right"></div>
+            <div class="demo-eyes"><i></i><i></i></div>
+            <div class="demo-mouth"></div><div class="demo-blush"></div><div class="demo-face-glint"></div>
+          </div>
+          <div class="demo-frame-detail"></div><div class="demo-base"></div>
+        </div>
+        <div class="demo-satellite satellite-1" aria-hidden="true">♬</div>
+        <div class="demo-satellite satellite-2" aria-hidden="true">✓</div>
+        <div class="demo-satellite satellite-3" aria-hidden="true">✦</div>
+      </div>
+      <div class="robot-callout"><span>LISTEN</span><span>LEARN</span><span>LEVEL UP</span></div>
+      <div class="demo-visual-footer"><span class="demo-state-pulse"></span><span id="demo-state-label">READY FOR YOUR VOICE</span><span class="demo-equalizer" id="demo-equalizer" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></div>
+    </section>
+
+    <section class="demo-control tutor-panel" aria-label="English coaching console">
+      <div class="panel-top"><div class="kicker">INTERACTIVE AI / <b>MODEL</b></div><div class="model-presence" id="model-presence"><span>○</span><b>MODEL NOT INSTALLED</b></div></div>
+      <div class="intro-group">
+        <h1>Speak better.<br><span>Think bigger.</span></h1>
+        <p>Every message becomes a lesson: sentence correction, sophisticated rewrites, clear grammar, powerful vocabulary, guided practice, and a fresh quiz.</p>
+      </div>
+      <div class="study-settings" aria-label="Personalize your lesson">
+        <label class="level-picker" for="learner-level"><span>YOUR LEVEL</span><select id="learner-level"><option>A1</option><option>A2</option><option>B1</option><option>B2</option><option>C1</option><option>C2</option></select></label>
+        <div class="goal-picker"><span>TRAINING FOCUS</span><div class="goal-options" id="goal-options"><button data-goal="Everyday conversation" class="active">Everyday</button><button data-goal="Academic English">Academic</button><button data-goal="Business English">Business</button><button data-goal="IELTS and CEFR exams">IELTS</button></div></div>
+      </div>
+      <div class="model-setup" id="model-setup">
+        <div class="setup-head"><span class="setup-icon">↓</span><div><strong id="setup-title">Install your private MODEL</strong><small id="setup-description">Download once inside the app. About 2.4 GB + extra RAM required.</small></div></div>
+        <div class="setup-progress" id="setup-progress" hidden><div id="setup-progress-bar"></div></div>
+        <div class="setup-buttons"><button id="install-model" class="setup-primary">Install MODEL</button><button id="import-model" class="setup-secondary">Import GGUF</button></div>
+      </div>
+      <div class="cycle-label"><span>THE 7-STEP LEARNING CYCLE</span><span>EVERY RESPONSE</span></div>
+      <div class="cycle-chips"><span>01 Review</span><span>02 Correct</span><span>03 Upgrade</span><span>04 Grammar</span><span>05 Vocabulary</span><span>06 Practice</span><span>07 Quiz</span></div>
+      <div class="experience-chat-log tutor-log" id="tutor-log" role="log" aria-live="polite" aria-label="VELTRIX lesson transcript">
+        <div class="intro-empty"><span class="intro-spark">✧</span><strong>Your next sentence starts here.</strong><p>Say a sentence in English. VELTRIX will refine it, teach the rule, introduce advanced words, and quiz you. The next turn begins when you answer.</p></div>
+      </div>
+      <div class="suggestions" id="suggestions"><button data-example="I go to school yesterday.">Correct my grammar</button><button data-example="I want to speak more confidently in meetings.">Make this advanced</button><button data-example="Give me a challenging English speaking question.">Start speaking practice</button></div>
+      <div class="learning-bar"><div><b id="xp-text">0 XP</b><span id="lesson-stats">DAY 1 OF YOUR LEARNING JOURNEY</span></div><div class="xp-progress"><div id="xp-bar"></div></div></div>
+      <form id="input-form" class="composer" autocomplete="off">
+        <label class="sr-only" for="user-message">Your English sentence or quiz answer</label>
+        <textarea id="user-message" rows="1" maxlength="1800" placeholder="Say something in English or answer the last quiz…" aria-label="English sentence or quiz answer"></textarea>
+        <button type="submit" id="send-button" aria-label="Send message">➜</button>
+      </form>
+      <div class="action-row"><button type="button" id="record-button">♩ <span>Speak</span></button><button type="button" id="audio-button">◖ <span>Voice on</span></button><button type="button" id="stop-button">◌ <span>Stop</span></button><button type="button" id="clear-button">× <span>New lesson</span></button></div>
+      <div class="footer-note">On-device AI inference: offline after model installation. Android speech recognition may use a network service. TTS depends on installed Android voices. Model-generated feedback can make mistakes.</div>
+    </section>
+  </main>
+  <footer class="app-footer"><span>VELTRIX AI © 2026</span><span>YOUR VOICE. YOUR PROGRESS. YOUR INTELLIGENCE.</span></footer>
+</div>
+<div class="toast-area" id="toasts" aria-live="assertive"></div>
+<script src="tutor.js"></script>
+</body>
+</html>

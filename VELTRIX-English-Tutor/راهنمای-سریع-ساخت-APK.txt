@@ -1,0 +1,17 @@
+VELTRIX AI — English Tutor / راهنمای سریع نصب روی اندروید
+
+۱. فایل ZIP جدید را استخراج کنید.
+۲. Git for Windows را نصب و به حساب GitHub خود وارد شوید.
+۳. در PowerShell نام و ایمیل Git را تنظیم کنید (اگر قبلاً تنظیم نشده‌اند):
+   git config --global user.name "Parham Babaei"
+   git config --global user.email "YOUR_GITHUB_EMAIL"
+۴. فایل UPDATE_GITHUB_WINDOWS.bat را اجرا کنید، تغییرات را بررسی و با Y تأیید کنید.
+۵. اسکریپت Repository فعلی atlas-one-android را Clone می‌کند و برنامه VELTRIX را در پوشه مستقل VELTRIX-English-Tutor قرار می‌دهد؛ فایل‌های قبلی حذف یا Force Push نمی‌شوند.
+۶. در GitHub به Actions → VELTRIX English Tutor APK بروید.
+۷. اگر Workflow موفق بود، فایل app-debug.apk را از Artifacts دانلود و روی Android 13+ نصب کنید.
+۸. داخل برنامه Install MODEL را بزنید تا مدل حدود ۲.۴ گیگابایتی نصب شود.
+
+نکات:
+ZIP شامل سورس و GitHub Workflow است، نه APK کامپایل‌شده.
+GitHub Actions هنوز در حساب شما تست نشده و ممکن است خطاهای ساخت جداگانه‌ای داشته باشد.
+اجرای مدل روی سخت‌افزار واقعی گوشی نیز هنوز تأیید نشده است.
