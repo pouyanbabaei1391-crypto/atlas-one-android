@@ -159,3 +159,10 @@ When the APK build fails, check the first failing GitHub Actions step. If it rea
 ## 2026-10-09 Android SDK Workflow Fix
 
 The GitHub-hosted workflow now bypasses the previous `android-actions/setup-android@v3` license failure and uses the runner SDK with explicit installation and diagnostic logs. The release artifact is named `VELTRIX-English-Tutor.apk`. Compiled APK output is **not** shipped in this source ZIP.
+
+
+## 2026-10-09: ARM64 build repairs
+
+This package fixes upstream llama.cpp native ABI to ARM64-only, constrains Gradle/native parallelism on GitHub runners, and prints a concise actionable **first compiler error** in the GitHub Actions job summary. It retains real on-device inference; it does not replace the model with a simulated response. The full GitHub build is not verified until the workflow reports success.
+
+If the build fails, open the run summary and copy **VELTRIX actual compile error** or download the `VELTRIX-FAILURE-DIAGNOSTICS` artifact. The screenshot supplied did not show the precise Gradle error text, so other compiler issues may remain.

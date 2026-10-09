@@ -24,8 +24,8 @@ jobs:
         shell: bash
         working-directory: VELTRIX-English-Tutor
     env:
-      CMAKE_BUILD_PARALLEL_LEVEL: '2'
-      GRADLE_OPTS: '-Dorg.gradle.jvmargs=-Xmx3g -Dorg.gradle.workers.max=2'
+      CMAKE_BUILD_PARALLEL_LEVEL: '1'
+      GRADLE_OPTS: '-Dorg.gradle.jvmargs=-Xmx2g -Dorg.gradle.workers.max=1'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -112,6 +112,13 @@ jobs:
           bash scripts/bootstrap_llama.sh 2>&1 | tee veltrix-native-download.log
           test -f vendor/llama.cpp/examples/llama.android/lib/build.gradle.kts
 
+      - name: Align native inference library for ARM64 only
+        run: |
+          set -euo pipefail
+          echo 'stage=configure-native-module' > veltrix-build-stage.txt
+          python3 scripts/prepare_android_native.py
+          echo 'Native module ABI and Android configuration checked.'
+
       - name: Set up Gradle 8.13
         uses: gradle/actions/setup-gradle@v4
         with:
@@ -129,7 +136,7 @@ jobs:
         run: |
           set -euo pipefail
           echo 'stage=gradle-compile' > veltrix-build-stage.txt
-          gradle --no-daemon --max-workers=2 :app:assembleDebug --stacktrace 2>&1 | tee veltrix-gradle-build.log
+          gradle --no-daemon --max-workers=1 :app:assembleDebug --stacktrace --warning-mode summary 2>&1 | tee veltrix-gradle-build.log
 
       - name: Verify APK exists
         run: |
@@ -162,6 +169,17 @@ jobs:
             --title "VELTRIX English Tutor APK | Build ${{ github.run_id }}" \
             --notes 'Debug APK; model is downloaded in the app. Device functionality has not been verified.'
 
+      - name: Report actual first build error
+        if: failure()
+        run: |
+          echo '### VELTRIX actual compile error (automatic extraction)' >> "$GITHUB_STEP_SUMMARY"
+          if [[ -f veltrix-gradle-build.log ]]; then
+            python3 scripts/gradle_error_report.py veltrix-gradle-build.log | tee VELTRIX_FIRST_ERROR.txt
+            cat VELTRIX_FIRST_ERROR.txt >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'Gradle compilation was not reached. Check the first failed setup step.' | tee VELTRIX_FIRST_ERROR.txt >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Upload diagnostics even when a step fails
         if: failure()
         uses: actions/upload-artifact@v4
@@ -173,6 +191,7 @@ jobs:
             VELTRIX-English-Tutor/veltrix-sdk-licenses.log
             VELTRIX-English-Tutor/veltrix-native-download.log
             VELTRIX-English-Tutor/veltrix-gradle-build.log
+            VELTRIX-English-Tutor/VELTRIX_FIRST_ERROR.txt
           if-no-files-found: warn
           retention-days: 30
 
