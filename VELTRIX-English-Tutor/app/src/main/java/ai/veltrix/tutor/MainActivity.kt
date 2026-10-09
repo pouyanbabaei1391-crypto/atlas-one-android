@@ -134,7 +134,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         @JavascriptInterface fun ask(text: String, kind: String, term: String, level: String) = runOnUiThread {
             // Content is student-provided, never a native command. Strict length/type limits.
             val safeKind = if (kind in setOf("word", "collocation", "grammar")) kind else "grammar"
-            generate(text.take(1200).trim(), safeKind, term.take(90).trim(), level.take(2))
+            generate(text.take(1200).trim(), safeKind, term.take(1100).trim(), level.take(2))
         }
         @JavascriptInterface fun beginVoice() = runOnUiThread { startVoice() }
         @JavascriptInterface fun stopAll() = runOnUiThread { stopAllTasks() }
@@ -269,7 +269,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
             val reply = StringBuilder()
             var lastUi = SystemClock.elapsedRealtime()
             try {
-                engine!!.sendUserPrompt(prompt, 340).collect { token ->
+                engine!!.sendUserPrompt(prompt, if (focusKind == "grammar") 650 else 1250).collect { token ->
                     reply.append(token)
                     val now = SystemClock.elapsedRealtime()
                     if (now - lastUi > 130L) {

@@ -1,6 +1,6 @@
-# VELTRIX AI — English Micro-Tutor (Fast, Private, 30-Day Sprint)
+# VELTRIX AI — English Tutor (Fast, Private, Three-Stage Learning)
 
-A fully source-available Android project based on the earlier VELTRIX English Tutor. It keeps the animated facial-expression companion and an extra-large responsive conversation canvas. The app has exactly two teaching parts per successful answer: **UPGRADE** (short sentence rewrite) and **FOCUS** (one word OR one collocation OR one grammar concept, with example and recall question).
+A fully source-available Android project based on the earlier VELTRIX English Tutor. It keeps the animated facial-expression companion and an extra-large responsive conversation canvas. The app has exactly two teaching parts per successful answer: **ANSWER** (a concise corrected and advanced rewrite) and **PRACTICE** (one staged lesson, at most 15 logical lines, with one exercise).
 
 ## What's changed
 
@@ -12,7 +12,15 @@ A fully source-available Android project based on the earlier VELTRIX English Tu
 
 ## Critical learning reality
 
-Introducing 3,000 words + 1,000 collocations + 159 grammar topics in 30 days requires **4,159 micro lessons**, approximately **139 lessons per day** (plus reviews). This is an extreme exposure target and **does not certify C1/C2, even if every item is introduced**. A1 to C1/C2 in one month is not a valid promise. Content is intentionally one focus per message; users may need many messages or a longer plan. AI-generated explanations can make mistakes.
+The lesson cycle is **10 unseen vocabulary items → 1 advanced grammar topic → 10 unseen collocations**, repeated. With 3,000 words, covering all vocabulary alone requires 300 vocabulary turns; keeping the strict three-turn cycle means **at least 900 conversations, about 30 per day for 30 days**, with repeated grammar/collocation review after those pools finish. This is an extreme exposure target and **does not certify C1/C2 or lasting retention**, particularly from A1 in a month. AI-generated explanations and examples can be incorrect; no model is guaranteed to obey the 10-entry format in every turn. In that case the lesson is shown but not marked as introduced, so the next turn repeats its assigned content.
+
+## English-only Answer & Practice
+
+- **ANSWER:** one concise English correction / improved version of the student's message, preserving the meaning.
+- **PRACTICE:** vocabulary batches of 10 entries (each term, short English definition, short example); the next turn is an advanced grammar explanation with examples; the next turn is a batch of 10 professional collocations. Each ends with exactly one **Exercise:** question.
+- The curriculum index and introduced-item IDs persist in Android WebView local storage. The next vocabulary batch begins where the previous one stopped. Advanced grammar topics are prioritized. Once a pool is exhausted, those turns switch to review.
+- Practice is capped at **15 explicit logical lines**; on narrow phones, long example lines are horizontally scrollable rather than wrapped into many physical rows. The model must satisfy the required output format for the lesson to count.
+- Lessons run with a quantized local model. Ten-item responses are longer than old micro-lessons and may be slower; do not assume the 10× speed target is achieved.
 
 ## Model / privacy
 
