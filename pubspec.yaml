@@ -1,7 +1,7 @@
 name: atlas_one_mobile_ai
-description: Privacy-first Persian AI companion for Android and iOS.
+description: VELTRIX AI - English mastery tutor with Gemma 3, STT, TTS and CEFR quizzes.
 publish_to: 'none'
-version: 0.4.0+4
+version: 0.5.0+5
 
 environment:
   sdk: '>=3.12.0 <4.0.0'

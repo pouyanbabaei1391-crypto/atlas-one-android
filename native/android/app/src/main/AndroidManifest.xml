@@ -7,6 +7,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
 
     <queries>
+        <intent><action android:name="android.speech.RecognitionService" /></intent>
+        <intent><action android:name="android.intent.action.TTS_SERVICE" /></intent>
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
@@ -18,7 +20,7 @@
     </queries>
 
     <application
-        android:label="Atlas One"
+        android:label="VELTRIX AI"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="true">

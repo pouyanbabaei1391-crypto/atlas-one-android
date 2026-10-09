@@ -1,74 +1,50 @@
-name: Build Atlas Android APK
+name: Build Android APK
 
 on:
-  workflow_dispatch:
   push:
-    branches:
-      - main
-      - master
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
 
-concurrency:
-  group: atlas-android-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
-  build-apk:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 45
-
-    env:
-      CI: "true"
-      JAVA_TOOL_OPTIONS: "-Xmx4g"
-      GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.daemon=false"
-
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
-
-      - name: Set up Java 17
-        uses: actions/setup-java@v5
+      - name: Checkout existing repository
+        uses: actions/checkout@v4
+      - name: Install Java 17
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
-
-      - name: Set up Flutter
+          java-version: '17'
+      - name: Install Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.47.5"
+          flutter-version: '3.47.5'
           channel: stable
           cache: true
-
-      - name: Verify repository
-        shell: bash
+      - name: Validate Dart lesson parser and URL handling
         run: |
-          set -euo pipefail
-          test -f build.py
-          test -f pubspec.yaml
-          test -d native/android
-          echo "Atlas source tree is present."
-
-      - name: Verify toolchain
-        run: |
-          flutter --version
-          dart --version
-          java -version
-          python3 --version
-
-      - name: Build release APK
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 build.py android
-          test -s dist/Atlas-One-Android.apk
-          ls -lh dist/Atlas-One-Android.apk
-
-      - name: Upload APK artifact
+          flutter pub get
+          flutter test test/language/lesson_turn_test.dart
+      - name: Build Android release APK using existing build system
+        run: python3 build.py android
+      - name: Preserve original APK name and create VELTRIX alias
+        run: cp dist/Atlas-One-Android.apk dist/VELTRIX-AI-English-Mastery.apk
+      - name: Publish existing Atlas APK artifact name
         uses: actions/upload-artifact@v4
         with:
           name: Atlas-One-Android-APK
           path: dist/Atlas-One-Android.apk
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30
+      - name: Publish VELTRIX AI APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: VELTRIX-AI-English-Mastery-APK
+          path: dist/VELTRIX-AI-English-Mastery.apk
+          if-no-files-found: error
+          retention-days: 30

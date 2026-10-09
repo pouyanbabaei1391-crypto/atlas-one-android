@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0b1119" />
+  <title>VELTRIX AI — English Mastery (Design Preview)</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="application">
+    <header class="toolbar">
+      <span class="alive-dot"></span><b>VELTRIX AI</b><i class="separator"></i>
+      <span>ENGLISH MASTERY</span><small>GEMMA 3:4B · LANGUAGE STUDIO</small>
+      <button id="settings" class="gear" aria-label="Configure Ollama server">⚙</button>
+    </header>
+    <section class="left-panel" aria-label="Animated VELTRIX character">
+      <div class="stage-meta">VELTRIX / LANGUAGE ENVIRONMENT <span id="face-mode">IDLE</span></div>
+      <div class="ambient-ring ring-one"></div><div class="ambient-ring ring-two"></div>
+      <span class="floating-icon left-icon">♩</span><span class="floating-icon right-icon">⬡</span>
+      <div class="head-container" id="robot" data-mode="idle">
+        <svg viewBox="0 0 340 340" role="img" aria-label="Friendly expressive blue-eyed AI character">
+          <defs>
+            <linearGradient id="shell" x1="0%" y1="0%" x2="88%" y2="95%">
+              <stop offset="0%" stop-color="#dbf7ff"/><stop offset="25%" stop-color="#80a8be"/>
+              <stop offset="58%" stop-color="#20303c"/><stop offset="83%" stop-color="#b6d7e2"/>
+              <stop offset="100%" stop-color="#111e2b"/>
+            </linearGradient>
+            <linearGradient id="glass" x1="15%" y1="0%" x2="80%" y2="100%">
+              <stop offset="0%" stop-color="#192630"/><stop offset="55%" stop-color="#070a11"/><stop offset="100%" stop-color="#142532"/>
+            </linearGradient>
+            <linearGradient id="chin" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop stop-color="#e7f8ff"/><stop offset="55%" stop-color="#628090"/><stop offset="100%" stop-color="#121d28"/>
+            </linearGradient>
+            <filter id="soft-glow"><feGaussianBlur stdDeviation="7"/></filter>
+          </defs>
+          <path class="shell" fill="url(#shell)" d="M69 121 C79 67 126 36 194 38 C248 39 286 69 292 125 L305 231 C312 289 273 307 210 309 L140 313 C88 314 62 293 60 236 Z"/>
+          <path fill="url(#glass)" d="M84 126 C94 72 141 48 198 51 C254 53 277 100 278 156 L283 222 C282 256 265 275 218 281 L144 286 C98 287 82 262 79 222 Z"/>
+          <path fill="white" opacity=".055" d="M102 92 Q135 55 183 59 Q121 105 107 179Z"/>
+          <g class="brows" stroke="#6cafff" stroke-width="9" stroke-linecap="round" fill="none">
+            <path d="M117 149 Q134 129 156 135"/><path d="M207 129 Q230 125 245 139"/>
+          </g>
+          <g class="eyes" fill="#569aff">
+            <ellipse class="eye" cx="148" cy="185" rx="17" ry="28"/>
+            <ellipse class="eye" cx="223" cy="182" rx="18" ry="29"/>
+          </g>
+          <g filter="url(#soft-glow)" fill="#569aff" opacity=".55">
+            <ellipse cx="148" cy="185" rx="21" ry="31"/><ellipse cx="223" cy="182" rx="22" ry="32"/>
+          </g>
+          <path id="mouth" d="M172 250 Q190 258 207 248" fill="none" stroke="#62b1ff" stroke-width="4" stroke-linecap="round"/>
+          <path fill="url(#chin)" d="M116 291 Q219 281 283 270 L284 286 Q197 300 120 306 Z"/>
+        </svg>
+      </div>
+      <span class="floating-icon bottom-icon">⌘</span>
+      <div class="stage-footer"><span class="alive-dot"></span><span id="stage-status">READY TO EXPLORE</span><b>▮▮▮▮▮▮</b></div>
+    </section>
+    <section class="right-panel">
+      <div class="right-scroll">
+        <div class="eyebrow">INTERACTIVE AI / LANGUAGE MODEL <span id="model-badge">○ CONNECT MODEL</span></div>
+        <h1>Meet your AI.<br><em>Master your English.</em></h1>
+        <p class="subtitle">Speak naturally. VELTRIX corrects your sentences, explains grammar, teaches powerful vocabulary and quizzes you after every turn.</p>
+        <div class="status-banner"><span class="alive-dot"></span><span id="connection-status">Configure Ollama with gemma3:4b in model settings.</span><button id="retry" aria-label="Retry server connection">↻ Retry</button></div>
+        <article class="teaching-area" id="lesson-area">
+          <div class="welcome"><b>Ask VELTRIX to improve your English.</b><p>Try “I didn't care how difficult it was.”<br>I'll correct it, upgrade it and quiz you.</p></div>
+        </article>
+        <p id="error" class="error" role="alert" hidden></p>
+        <div class="quick-prompts"><button data-prompt="I am agree with your opinion.">Correct my English</button><button data-prompt="Teach me sophisticated natural English collocations.">Advanced vocabulary</button><button data-prompt="Start a B1 speaking quiz.">Start a CEFR quiz</button></div>
+      </div>
+      <div class="composer">
+        <div class="entry"><input id="prompt" autocomplete="off" aria-label="English practice sentence" placeholder="Speak or type a sentence in English…" /><button id="send" aria-label="Submit">➜</button></div>
+        <div class="actions"><button id="speak">♩ Speak</button><button id="voice">◖)) Voice on</button><button id="stop">⏻ Stop</button><button id="clear">✕ Clear</button></div>
+        <div class="small-settings"><span>YOUR LEVEL</span><select id="level" aria-label="CEFR level"><option>A1</option><option>A2</option><option selected>B1</option><option>B2</option><option>C1</option><option>C2</option></select><label>HANDS-FREE <input id="handsfree" type="checkbox" /></label></div>
+        <p class="footnote">English STT: browser speech recognition (may use cloud) · TTS: browser speech synthesis · Gemma 3 4B: your Ollama host.</p>
+      </div>
+    </section>
+  </main>
+  <dialog id="config"><form method="dialog"><h2>Gemma 3 · 4B</h2><p>Set the address of your private Ollama server. In a browser, configure Ollama CORS for this origin.</p><input id="server" value="http://192.168.1.10:11434/v1" type="url" /><menu><button value="cancel">Cancel</button><button id="save-server" value="ok">Save</button></menu></form></dialog>
+  <script src="preview.js"></script>
+</body>
+</html>
